@@ -1,0 +1,36 @@
+What to fill in
+
+
+CIFAR10.lua
+	createDb
+
+
+
+
+batman@LUPE:~/Deep Learning/dl-practice$ grep cutorch main.lua train.lua util.lua val.lua
+train.lua:	cutorch.synchronize(  )
+train.lua:	cutorch.synchronize(  )
+train.lua:	cutorch.synchronize(  )
+train.lua:	cutorch.synchronize(  )
+util.lua:      assert(nGPU <= cutorch.getDeviceCount(), 'number of GPUs less than nGPU specified')
+util.lua:         cutorch.setDevice(i)
+util.lua:   cutorch.setDevice(GPU)
+util.lua:   cutorch.setDevice(GPU)
+val.lua:	cutorch.synchronize(  )
+val.lua:	cutorch.synchronize(  )
+val.lua:	cutorch.synchronize(  )
+val.lua:	cutorch.synchronize(  )
+batman@LUPE:~/Deep Learning/dl-practice$ grep cunn main.lua train.lua util.lua val.lua
+util.lua:require 'cunn'
+batman@LUPE:~/Deep Learning/dl-practice$ grep cud main.lua train.lua util.lua val.lua
+util.lua:         model:add(model_single:clone():cuda(), i)
+util.lua:   if backend == 'cudnn' then
+util.lua:      require 'cudnn'
+batman@LUPE:~/Deep Learning/dl-practice$ grep Tensor main.lua train.lua util.lua val.lua
+main.lua:torch.setdefaulttensortype( 'torch.FloatTensor' )
+train.lua:train.inputs = torch.CudaTensor(  )
+train.lua:train.labels = torch.CudaTensor(  )
+util.lua:Tensor = torch.Tensor
+val.lua:val.inputs = torch.CudaTensor(  )
+val.lua:val.labels = torch.CudaTensor(  )
+

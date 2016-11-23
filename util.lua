@@ -1,6 +1,7 @@
 -- Customized from Soumith's util.lua
 -- You can find the original source from 
 -- https://github.com/soumith/imagenet-multiGPU.torch/blob/master/util.lua
+
 require 'cunn'
 local ffi=require 'ffi'
 local GPU = 1
@@ -16,7 +17,6 @@ function makeDataParallel(model, nGPU)
       end
    end
    cutorch.setDevice(GPU)
-
    return model
 end
 local function cleanDPT(module)

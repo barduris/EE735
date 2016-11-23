@@ -1,3 +1,7 @@
 *.swp
 .nfs*
 data/cache
+data/db/CIFAR10/
+cutorch.lua
+cunn.lua
+cudnn.lua

@@ -80,6 +80,8 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	-- 3. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call val.evalBatch().
 	
+
+
 	-- END BLANK.
 	-------------
 	cutorch.synchronize(  )

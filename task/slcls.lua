@@ -269,6 +269,9 @@ function task:setNumBatch(  )
 	-- FILL IN THE BLANK.
 	-- Determine number of train/val batches per epoch.
 	
+	local numBatchTrain = math.floor( self.dbtr.iid2cid:numel(  ) / self.opt.epochSize )
+	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / self.opt.epochSize )
+
 	-- END BLANK.
 	-------------
 	return numBatchTrain, numBatchVal
@@ -281,6 +284,8 @@ function task:estimateInputStat(  )
 	-- FILL IN THE BLANK.
 	-- Estimate RGB-mean vector from numIm training images.
 	-- You can use self:getBatchTrain().
+
+	print(meanEstimate)
 	
 	-- END BLANK.
 	-------------
@@ -463,7 +468,16 @@ function task:processImageTrain( path, rw, rh, rf )
 	--    You must use rf which is a random values of a range [0,1]
 	-- 4. Normalize the augmented image by the RGB mean.
 	--    You must call self:normalizeImage()
-	
+
+	local im = self:loadImage( path )
+	--notdone()
+	local x = math.floor(rw * ( im:size(3) - cropSize ))
+	local y = math.floor(rh * ( im:size(2) - cropSize ))
+	im = image.crop(im, x, y, x + cropSize, y + cropSize )
+	if rf > 0.5 then
+		im = image.hflip(im)
+	end
+	out = self:normalizeImage(im)
 	-- END BLANK.
 	-------------
 	return out
@@ -477,7 +491,12 @@ function task:processImageVal( path )
 	-- 2. Do central crop.
 	-- 4. Normalize the image by the RGB mean.
 	--    You must call self:normalizeImage()
-	
+
+	local im = self:loadImage( path )
+	local x = math.floor( im:size(3) - cropSize / 2.0 )
+	local y = math.floor( im:size(2) - cropSize / 2.0 )
+	im = image.crop(im, x, y, x + cropSize, y + cropSize )
+	local out = self:normalizeImage(im)
 	-- END BLANK.
 	-------------
 	return out
@@ -500,6 +519,19 @@ function task:resizeImage( im )
 	-- If keepAspect is true, keep the image aspect ratio,
 	-- and resize the image so that the short side is imageSize.
 	
+	if keepAspect then
+		local width = im:size(3)
+		local height = im:size(2)
+		if width < height then
+			local ratio = imageSize / width
+			im = scale( im, imageSize, math.floor(ratio * height) )
+		else
+			local ratio = imageSize / height
+			im = scale( im, math.floor(ratio * width), imageSize )
+		end
+	else
+		im = image.scale( im, imageSize, imageSize )
+	end
 	-- END BLANK.
 	-------------
 	return im

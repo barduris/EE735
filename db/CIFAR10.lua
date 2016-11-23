@@ -44,6 +44,38 @@ function createDb( setName )
 	--             and a value is a class id (cid) of that image.
 	--              The image id starts from 1.
 	
+	local cid2name = {}
+	local iid2path = {}
+	local iid2cid = {}
+
+	local file = io.open(dbDir .. 'classnames.txt')
+	if file then
+		for line in file:lines() do
+			cid2name[#cid2name + 1] = line
+		end
+	end
+
+
+	if setName == 'train' then
+		file = io.open(dbDir .. 'train_impaths.txt')
+		for line in file:lines() do
+			iid2path[#iid2path + 1] = dbDir .. line
+		end
+		file = io.open(dbDir .. 'train_imclasses.txt')
+		for line in file:lines() do
+			iid2cid[#iid2cid + 1] = line
+		end
+	elseif setName == 'val' then
+		file = io.open(dbDir .. 'val_impaths.txt')
+		for line in file:lines() do
+			iid2path[#iid2path + 1] = dbDir .. line
+		end
+		file = io.open(dbDir .. 'val_imclasses.txt')
+		for line in file:lines() do
+			iid2cid[#iid2cid + 1] = line
+		end
+	end
+
 	-- END BLANK.
 	-------------
 	assert( #iid2path == #iid2cid )
