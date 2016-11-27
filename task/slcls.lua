@@ -7,6 +7,7 @@
 -------------------------------------------------------------------------------
 local ffi = require 'ffi'
 local task = torch.class( 'TaskManager' )
+require 'nn'
 -----------------------------------------------------------------------------
 ---- Task-independent functions ---------------------------------------------
 ---- These functions are used in common regardless of any specific task. ----
