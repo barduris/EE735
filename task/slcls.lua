@@ -353,7 +353,7 @@ function task:defineModel(  )
 		outSize = 64*outSize
 
 		-- FC 5
-		local classifier = nn:Sequencial()
+		local classifier = nn.Sequencial()
 		classifier:add(nn.Resize())
 		classifier:add(nn.Linear(outSize, numClass))
 		classifier:add(nn.LogSoftMax())
