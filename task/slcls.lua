@@ -323,6 +323,46 @@ function task:defineModel(  )
 		--    apply different learning rate to different network modules for the next dl-practice.
 		--    See the function task:groupParams() which will help your understanding.
 		
+		local outSize = self.opt.cropSize
+		local feature = nn.Sequencial()
+		-- Conv 1
+		feature:add(nn.SpatialConvolutionMM(3, 32, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 2
+		feature:add(nn.SpatialConvolutionMM(32, 32, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 3
+		feature:add(nn.SpatialConvolutionMM(32, 64, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 4
+		feature:add(nn.SpatialConvolutionMM(64, 64, 4, 4, 1, 1, 0, 0))
+		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialDropout(dropout))
+		
+		-- Size of feature output
+		outSize = 64*outSize
+
+		-- FC 5
+		local classifier = nn:Sequencial()
+		classifier:add(nn.Resize())
+		classifier:add(nn.Linear(outSize, numClass))
+		classifier:add(nn.LogSoftMax())
+
+		-- Concatenation
+		model = nn.Sequencial()
+		model:add(feature)
+		model:add(classifier)
+
 		-- END BLANK.
 		-------------
 	elseif netName == 'cifarNetLarge' then
