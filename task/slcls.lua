@@ -7,7 +7,6 @@
 -------------------------------------------------------------------------------
 local ffi = require 'ffi'
 local task = torch.class( 'TaskManager' )
-require 'nn'
 -----------------------------------------------------------------------------
 ---- Task-independent functions ---------------------------------------------
 ---- These functions are used in common regardless of any specific task. ----
@@ -325,7 +324,7 @@ function task:defineModel(  )
 		--    See the function task:groupParams() which will help your understanding.
 		
 		local outSize = self.opt.cropSize
-		local feature = nn.Sequencial()
+		local feature = nn.Sequential()
 		-- Conv 1
 		feature:add(nn.SpatialConvolutionMM(3, 32, 5, 5, 1, 1, 2, 2))
 		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
@@ -354,13 +353,13 @@ function task:defineModel(  )
 		outSize = 64*outSize
 
 		-- FC 5
-		local classifier = nn.Sequencial()
+		local classifier = nn.Sequential()
 		classifier:add(nn.Resize())
 		classifier:add(nn.Linear(outSize, numClass))
 		classifier:add(nn.LogSoftMax())
 
 		-- Concatenation
-		model = nn.Sequencial()
+		model = nn.Sequential()
 		model:add(feature)
 		model:add(classifier)
 
