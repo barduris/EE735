@@ -399,7 +399,7 @@ function task:defineCriterion(  )
 		-- FILL IN THE BLANK.
 		-- Choose a built-in log-softmax loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
-		
+		loss = nn.ClassNLLCriterion()
 		-- END BLANK.
 		-------------
 	elseif lossName == 'hinge' then
