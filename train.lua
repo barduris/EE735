@@ -122,8 +122,10 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		momentum = opt.momentum
 	}--]]
 
-	train.optims[1]
-	train.model[1]
+	print(gradients)
+
+	print(train.optims[1])
+	print(train.model[1])
 	_,fs = optim.sgd(feval,x,sgd_params)
 
 	-- 5. Evaluate epoch
