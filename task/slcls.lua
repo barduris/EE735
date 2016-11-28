@@ -269,8 +269,8 @@ function task:setNumBatch(  )
 	-- FILL IN THE BLANK.
 	-- Determine number of train/val batches per epoch.
 	
-	local numBatchTrain = math.floor( self.dbtr.iid2cid:numel(  ) / self.opt.epochSize )
-	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / self.opt.epochSize )
+	local numBatchTrain = self.opt.epochSize --math.floor( self.dbtr.iid2cid:numel(  ) / batchSize )
+	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / batchSize )
 
 	-- END BLANK.
 	-------------
@@ -462,7 +462,7 @@ function task:getBatchTrain(  )
 	indeces = indeces[{{1, batchSize}}]
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
-	local label = torch.Tensor(batchSize)
+	local label = torch.Tensor(batchSize) --zeros(batchSize, numClass)
 	local path
 	local rw
 	local rh
@@ -476,6 +476,10 @@ function task:getBatchTrain(  )
 		input[i] = self:processImageTrain(path, rw, rh, rf)
 		label[i] = self.dbtr.iid2cid[ indeces[i] ]
 	end
+
+	-- for some others maybe
+	-- classId = self.dbtr.iid2cid[ indeces[i] ]
+	--	label[i][classId] = 1
 
 
 	-- END BLANK.
@@ -522,6 +526,15 @@ function task:evalBatch( outs, labels )
 	-- Compare the network output and label to find top-1 accuracy.
 	-- This also depends on the type of loss.
 	
+	local outLabels = torch.max(outs, 2)
+	local top1 = 0
+	for i = 1, #outLabels do
+		if (outLabels[i] ~= labels[i]) then
+			top1 = top1 + 1
+		ends
+	end
+	top1 = top1 / batchSize
+
 	-- END BLANK.
 	-------------
 	return top1 * 100
