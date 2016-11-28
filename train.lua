@@ -103,6 +103,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	-- 5. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call train.evalBatch().
 	
+	--print("Training batch")
+
 	-- 1. Feed-forward
     local output = train.model:forward(train.inputs)
 
@@ -111,8 +113,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	train.lossEpoch = train.lossEpoch + loss
 
 	-- 3. Estimate gradients
-	local gradients = train.criterion:backward(output, train.labels)
-	train.model:backward(train.labels, gradients)
+	local outputGradients = train.criterion:backward(output, train.labels)
+	train.model:backward(train.inputs, outputGradients)
 
 	-- 4. SGD
 	--[[sgd_params = {
@@ -121,15 +123,58 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		weightDecay = opt.weightDecay,
 		momentum = opt.momentum
 	}--]]
+	--local x, dl_dx = train.model:getParameters()
+
+	local layerPrameters = {}
+	local layerGradientParameters = {}
+
+	for i = 1, train.model:size() do
+		local layer = net:get(i)
+		layerParameters[i], layerGradientParameters[i] = layer:getParameters()
+	end
+
+
+	for i = 1, #layerParameters do
+
+
+		--if layerParameters[i]:nDimension() == 0 then
+			--print("Skipping layer!\n\n")
+		--else
+		if layerParameters[i]:nDimension() > 0 then
+			local feval = function(x)
+		    	return _, layerGradientParameters[i]
+			end
+
+			optim.sgd(feval, layerParameters[i], train.optims[i])
+
+		end
+	end
+
+	--[[
+	local , dw1
+
+	local feval_1 = function(x_new)
+		-- reset data
+		if x ~= x_new then x:copy(x_new) end
+		dl_dx:zero()
+
+		-- perform mini-batch gradient descent
+		local loss = train.criterion:forward(train.model:forward(inputs), targets)
+		model:backward(inputs, criterion:backward(model.output, targets))
+
+		return loss, dl_dx
+	end
+	_, fs = optim.sgd(feval, x, sgd_params)
 
 	print(gradients)
 
 	print(train.optims[1])
 	print(train.model[1])
 	_,fs = optim.sgd(feval,x,sgd_params)
+	--]]
 
 	-- 5. Evaluate epoch
-	train.evalEpoch = train.evalEpoch + train.evalBatch(outs, train.labels)
+	train.evalEpoch = train.evalEpoch + train.evalBatch(output, train.labels)
 
 
 	-- END BLANK.
