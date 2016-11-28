@@ -103,6 +103,33 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	-- 5. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call train.evalBatch().
 	
+	-- 1. Feed-forward
+    local output = train.model:forward(train.inputs)
+
+    -- 2. Estimate loss
+	local loss = train.criterion:forward(output, train.labels)
+	train.lossEpoch = train.lossEpoch + loss
+
+	-- 3. Estimate gradients
+	local gradients = criterion:backward(output, train.labels)
+	train.model:backward(train.labels, gradients)
+
+	-- 4. SGD
+	--[[sgd_params = {
+		learningRate = opt.learningRate,
+		--learningRateDecay = opt.learningRateDecay,
+		weightDecay = opt.weightDecay,
+		momentum = opt.momentum
+	}--]]
+
+	train.optims[1]
+	train.model[1]
+	_,fs = optim.sgd(feval,x,sgd_params)
+
+	-- 5. Evaluate epoch
+	train.evalEpoch = train.evalEpoch + train.evalBatch(outs, train.labels)
+
+
 	-- END BLANK.
 	-------------
 	if train.model.needsSync then train.model:syncParameters(  ) end

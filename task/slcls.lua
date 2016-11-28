@@ -284,8 +284,6 @@ function task:estimateInputStat(  )
 	-- FILL IN THE BLANK.
 	-- Estimate RGB-mean vector from numIm training images.
 	-- You can use self:getBatchTrain().
-
-	print(meanEstimate)
 	
 	-- END BLANK.
 	-------------
@@ -351,6 +349,7 @@ function task:defineModel(  )
 		
 		-- Size of feature output
 		outSize = 64*outSize
+		print("Size of input to FC network: " .. outSize)
 
 		-- FC 5
 		local classifier = nn.Sequential()
@@ -459,6 +458,26 @@ function task:getBatchTrain(  )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 	
+	local indeces = torch.randperm(numImage)
+	indeces = indeces[{{1, batchSize}}]
+
+	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
+	local label = torch.Tensor(batchSize)
+	local path
+	local rw
+	local rh
+	local rf
+
+	for i = 1, batchSize do
+		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
+		rw = torch.uniform()
+		rh = torch.uniform()
+		rf = torch.uniform()
+		input[i] = self:processImageTrain(path, rw, rh, rf)
+		label[i] = self.dbtr.iid2cid[ indeces[i] ]
+	end
+
+
 	-- END BLANK.
 	-------------
 	return input, label
@@ -477,6 +496,18 @@ function task:getBatchVal( iidStart )
 	-- 2. Make a label batch.
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
+
+	batchSize = math.min(batchSize, numImage - iidStart)
+
+	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
+	local path
+	for i = 1, batchSize do
+		path = ffi.string( torch.data( self.dbval.iid2path[iidStart + i - 1] ))
+		input[i] = self:processImageVal(path)
+	end
+
+	-- Need to reshape for other criterion
+	local label = self.dbVal.iid2cid[{{iidStart, iidStart+batchSize}}]
 	
 	-- END BLANK.
 	-------------
@@ -581,6 +612,10 @@ function task:normalizeImage( im )
 	---------------------
 	-- FILL IN THE BLANK.
 	-- Subtract the RGB mean vector from image.
+
+	for i = 1, 3 do 
+		im[i]:add(-rgbMean[i])
+	end
 	
 	-- END BLANK.
 	-------------
