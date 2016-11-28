@@ -535,7 +535,7 @@ function task:evalBatch( outs, labels )
 	-- Compare the network output and label to find top-1 accuracy.
 	-- This also depends on the type of loss.
 	
-	local _, outLabels = torch.max(outs, 2)
+	local _, outLabels = torch.max(outs, 2):squeeze()
 	print("First labels of batch")
 	print(outLabels[1])
 	print(labels[1])
