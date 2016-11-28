@@ -635,8 +635,10 @@ function task:normalizeImage( im )
 	-- FILL IN THE BLANK.
 	-- Subtract the RGB mean vector from image.
 
-	for i = 1, 3 do 
-		im[i]:add(-rgbMean[i])
+	if self.inputStat.mean then
+		for i = 1, 3 do 
+			im[i]:add(-rgbMean[i])
+		end
 	end
 	
 	-- END BLANK.
