@@ -290,7 +290,9 @@ function task:estimateInputStat(  )
 		local rgbMean = torch.squeeze(torch.mean(torch.mean(torch.mean(batch, 1), 3), 4))
 		meanEstimate = meanEstimate + rgbMean
 	end
+	print(meanEstimate)
 	meanEstimate:cdiv(it)
+	print(meanEstimate)
 
 	-- END BLANK.
 	-------------
