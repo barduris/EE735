@@ -141,6 +141,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		end
 	end
 
+	print("Number of layer parameters: " .. #layerParameters)
+	print("Number of layer options" .. #train.optims)
 
 	for i = 1, #layerParameters do
 
