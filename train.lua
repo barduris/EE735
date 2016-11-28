@@ -189,8 +189,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	-- 5. Evaluate epoch
 	local eval = train.evalBatch(output, train.labels)
 	train.evalEpoch = train.evalEpoch + eval
-	print(train.labels[1])
-	print(output[1])
+	--print(train.labels[1])
+	--print(output[1])
 
 
 	-- END BLANK.
@@ -202,7 +202,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	local totalTime = dataTime + netTime
 	local speed = train.batchSize / totalTime
 	-- Print information
-	train.print( string.format( 'Epoch %d, %d/%d, %dim/s (data %.2fs, net %.2fs), err %.2f, eval %.2f', 
+	train.print( string.format( 'Epoch %d, %d/%d, %dim/s (data %.2fs, net %.2fs), err %.2f, eval %.10f', 
 		train.epoch, train.batchNumber, train.epochSize, speed, dataTime, netTime, err, eval ) )
 	train.dataTimer:reset(  )
 	collectgarbage(  )
