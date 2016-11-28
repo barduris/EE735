@@ -291,7 +291,7 @@ function task:estimateInputStat(  )
 		meanEstimate = meanEstimate + rgbMean
 	end
 	print(meanEstimate)
-	meanEstimate:cdiv(it)
+	meanEstimate:div(it)
 	print(meanEstimate)
 
 	-- END BLANK.
