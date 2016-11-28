@@ -109,8 +109,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
     local output = train.model:forward(train.inputs)
 
     -- 2. Estimate loss
-	local loss = train.criterion:forward(output, train.labels)
-	train.lossEpoch = train.lossEpoch + loss
+	local err = train.criterion:forward(output, train.labels)
+	train.lossEpoch = train.lossEpoch + err
 
 	-- 3. Estimate gradients
 	local outputGradients = train.criterion:backward(output, train.labels)
@@ -174,7 +174,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	--]]
 
 	-- 5. Evaluate epoch
-	train.evalEpoch = train.evalEpoch + train.evalBatch(output, train.labels)
+	local eval = train.evalBatch(output, train.labels)
+	train.evalEpoch = train.evalEpoch + eval
 
 
 	-- END BLANK.
