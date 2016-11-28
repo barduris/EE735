@@ -537,7 +537,7 @@ function task:evalBatch( outs, labels )
 	
 	local _, outLabels = torch.max(outs, 2)
 	local top1 = 0
-	for i = 1, outLabels:size(1) do
+	for i = 1, batchSize do
 		if (outLabels[i] == labels[i]) then
 			top1 = top1 + 1
 		end
