@@ -536,7 +536,7 @@ function task:evalBatch( outs, labels )
 	-- This also depends on the type of loss.
 	
 	local _, outLabels = torch.max(outs, 2)
-	local top1 = 0
+	local top1 = 0.0
 	for i = 1, batchSize do
 		if (outLabels[i] == labels[i]) then
 			top1 = top1 + 1
