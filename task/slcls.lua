@@ -536,9 +536,13 @@ function task:evalBatch( outs, labels )
 	-- This also depends on the type of loss.
 	
 	local _, outLabels = torch.max(outs, 2)
-	local top1 = 0.0
+	print("First labels of batch")
+	print(outLabels[1])
+	print(labels[1])
+	local top1 = 0
 	for i = 1, batchSize do
 		if (outLabels[i] == labels[i]) then
+			print("Matched labels")
 			top1 = top1 + 1
 		end
 	end
