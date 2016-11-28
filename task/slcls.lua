@@ -284,7 +284,7 @@ function task:estimateInputStat(  )
 	-- FILL IN THE BLANK.
 	-- Estimate RGB-mean vector from numIm training images.
 	-- You can use self:getBatchTrain().
-	it = math.floor(numIn / batchSize)
+	it = math.floor(numIm / batchSize)
 	for i = 1, it do
 		local batch = self:getBatchTrain()
 		local rgbMean = torch.squeeze(torch.mean(torch.mean(torch.mean(stuff, 1), 3), 4))
