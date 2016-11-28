@@ -134,7 +134,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		local layer = train.model:get(i)
 		--layerParameters[i], layerGradientParameters[i] = layer:getParameters()
 		lp, lgp = layer:getParameters()
-		if lg:nDimension() > 0 then
+		if lp:nDimension() > 0 then
 			layerParameters[optIdx] = lp
 			layerGradientParameters[optIdx] = lgp
 			optIdx = optIdx + 1
