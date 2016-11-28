@@ -268,7 +268,7 @@ function task:setNumBatch(  )
 	---------------------
 	-- FILL IN THE BLANK.
 	-- Determine number of train/val batches per epoch.
-	
+	print("Epoch size: " .. self.opt.epochSize)
 	local numBatchTrain = self.opt.epochSize --math.floor( self.dbtr.iid2cid:numel(  ) / batchSize )
 	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / batchSize )
 
