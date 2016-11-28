@@ -125,7 +125,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	}--]]
 	--local x, dl_dx = train.model:getParameters()
 
-	local layerPrameters = {}
+	local layerParameters = {}
 	local layerGradientParameters = {}
 
 	for i = 1, train.model:size() do
