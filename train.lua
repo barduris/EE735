@@ -141,9 +141,9 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		end
 	end
 
-	print("Model size: " .. train.model:size())
-	print("Number of layer parameters: " .. #layerParameters)
-	print("Number of layer options: " .. #train.optims)
+	--print("Model size: " .. train.model:size())
+	--print("Number of layer parameters: " .. #layerParameters)
+	--print("Number of layer options: " .. #train.optims)
 
 	for i = 1, #layerParameters do
 
@@ -189,6 +189,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	-- 5. Evaluate epoch
 	local eval = train.evalBatch(output, train.labels)
 	train.evalEpoch = train.evalEpoch + eval
+	print(train.labels[1])
+	print(output[1])
 
 
 	-- END BLANK.
