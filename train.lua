@@ -150,8 +150,8 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		end
 	end
 
-	assert(train.model:get(1) ~= layerParameters[1])
-
+	assert(train.model:get(1):getParameters ~= layerParameters[1])
+	
 	--[[
 	local , dw1
 
