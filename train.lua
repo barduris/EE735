@@ -111,7 +111,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	train.lossEpoch = train.lossEpoch + loss
 
 	-- 3. Estimate gradients
-	local gradients = criterion:backward(output, train.labels)
+	local gradients = train.criterion:backward(output, train.labels)
 	train.model:backward(train.labels, gradients)
 
 	-- 4. SGD
