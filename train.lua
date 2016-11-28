@@ -127,7 +127,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 
 	local layerParameters = {}
 	local layerGradientParameters = {}
-	local optIdx = 0
+	local optIdx = 1
 	local lp, lgp
 
 	for i = 1, train.model:size() do
