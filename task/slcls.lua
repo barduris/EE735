@@ -287,7 +287,7 @@ function task:estimateInputStat(  )
 	it = math.floor(numIm / batchSize)
 	for i = 1, it do
 		local batch = self:getBatchTrain()
-		local rgbMean = torch.squeeze(torch.mean(torch.mean(torch.mean(stuff, 1), 3), 4))
+		local rgbMean = torch.squeeze(torch.mean(torch.mean(torch.mean(batch, 1), 3), 4))
 		meanEstimate = meanEstimate + rgbMean
 	end
 	meanEstimate:cdiv(it)
