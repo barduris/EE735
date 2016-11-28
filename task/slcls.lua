@@ -531,7 +531,7 @@ function task:evalBatch( outs, labels )
 	for i = 1, #outLabels do
 		if (outLabels[i] ~= labels[i]) then
 			top1 = top1 + 1
-		ends
+		end
 	end
 	top1 = top1 / batchSize
 
