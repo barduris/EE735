@@ -202,7 +202,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	local totalTime = dataTime + netTime
 	local speed = train.batchSize / totalTime
 	-- Print information
-	train.print( string.format( 'Epoch %d, %d/%d, %dim/s (data %.2fs, net %.2fs), err %.2f, eval %.10f', 
+	train.print( string.format( 'Epoch %d, %d/%d, %dim/s (data %.2fs, net %.2fs), err %.2f, eval %.2f', 
 		train.epoch, train.batchNumber, train.epochSize, speed, dataTime, netTime, err, eval ) )
 	train.dataTimer:reset(  )
 	collectgarbage(  )
