@@ -535,7 +535,7 @@ function task:evalBatch( outs, labels )
 	-- Compare the network output and label to find top-1 accuracy.
 	-- This also depends on the type of loss.
 	
-	local outLabels = torch.max(outs, 2)
+	local _, outLabels = torch.max(outs, 2)
 	local top1 = 0
 	for i = 1, outLabels:size(1) do
 		if (outLabels[i] == labels[i]) then
