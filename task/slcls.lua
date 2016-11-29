@@ -679,13 +679,15 @@ function task:evalBatch( outs, labels )
 	else
 		label = labels
 	end
+	outLabels = outLabels:squeeze()
+	label = label:squeeze()
 	print(label[1])
 	--print("First labels of batch")
 	--print(outLabels[1])
 	--print(labels[1])
 	local top1 = 0
 	for i = 1, batchSize do
-		if (outLabels[i][1] == label[i]) then
+		if (outLabels[i] == label[i]) then
 			--print("Matched labels")
 			top1 = top1 + 1
 		end
