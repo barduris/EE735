@@ -86,6 +86,8 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	-- 2.
 	print(output[1])
 	print(val.labels[1])
+	print("Output size" .. output:size())
+	print("Label size" .. val.labels:size())
 	print(val.criterion)
 	local err = val.criterion:forward(output, val.labels)
 	val.lossEpoch = val.lossEpoch + err
