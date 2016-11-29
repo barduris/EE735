@@ -637,11 +637,14 @@ function task:getBatchVal( iidStart )
 		path = ffi.string( torch.data( self.dbval.iid2path[iidStart + i - 1] ))
 		input[i] = self:processImageVal(path)
 	end
+	print(numClass)
 
 	local label
 	-- Need to reshape for other criterion
 	if lossName == 'l2' then
+		print("Generating Tensor")
 		label = torch.Tensor(batchSize, numClass):fill(-1)
+		print("Done with all that")
 		local cid
 		for i = 1, batchSize do --iidStart, iidStart+batchSize do
 			cid = self.dbval.iid2cid[iidStart + i - 1]
