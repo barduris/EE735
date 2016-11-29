@@ -364,7 +364,11 @@ function task:defineModel(  )
 		local classifier = nn.Sequential()
 		classifier:add(nn.Reshape(outSize))
 		classifier:add(nn.Linear(outSize, numClass))
-		if self.opt.loss == 'logSoftMax' then classifier:add(nn.LogSoftMax()) end
+		if self.opt.loss == 'logSoftMax' then 
+			classifier:add(nn.LogSoftMax()) 
+		elseif self.opt.loss == 'l2' then
+			classifier:add(nn.Tanh())
+		end
 		--classifier:add(nn.LogSoftMax())
 
 		-- Concatenation
