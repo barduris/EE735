@@ -109,8 +109,9 @@ function train.trainBatch( inputsCpu, labelsCpu )
     local output = train.model:forward(train.inputs)
 
     -- 2. Estimate loss
-    --print(output[1])
-	--print(train.labels[1])
+    print(train.inputs[1])
+    print(output[1])
+	print(train.labels[1])
 	--print("Output size: " .. output:size(1))
 	--print("Label size: " .. train.labels:size(1))
 	--print(train.criterion)
