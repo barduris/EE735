@@ -595,10 +595,12 @@ function task:getBatchTrain(  )
 			rf = torch.uniform()
 		end
 		input[i] = self:processImageTrain(path, rw, rh, rf)
+		local cid = self.dbtr.iid2cid[ indeces[i] ]
 		if lossName == 'l2' then
-			label[i][indeces[i]] = 1
+
+			label[i][cid] = 1
 		else
-			label[i] = self.dbtr.iid2cid[ indeces[i] ]
+			label[i] = cid
 		end
 	end
 
