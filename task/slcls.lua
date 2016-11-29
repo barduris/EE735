@@ -628,8 +628,8 @@ function task:getBatchVal( iidStart )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 
-	local numClass = self.dbtr.cid2name:size( 1 )
-	batchSize = math.min(batchSize, numImage - iidStart)
+	--local numClass = self.dbtr.cid2name:size( 1 )
+	--batchSize = math.min(batchSize, numImage - iidStart)
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
 	local path
