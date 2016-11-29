@@ -679,6 +679,7 @@ function task:evalBatch( outs, labels )
 	else
 		label = labels
 	end
+	print(label[1])
 	--print("First labels of batch")
 	--print(outLabels[1])
 	--print(labels[1])
