@@ -419,8 +419,12 @@ function task:defineModel(  )
 		local classifier = nn.Sequential()
 		classifier:add(nn.Reshape(outSize))
 		classifier:add(nn.Linear(outSize, numClass))
-		classifier:add(nn.LogSoftMax())
-
+		--classifier:add(nn.LogSoftMax())
+		if self.opt.loss == 'logSoftMax' then 
+			classifier:add(nn.LogSoftMax()) 
+		elseif self.opt.loss == 'l2' then
+			classifier:add(nn.Tanh())
+		end
 		-- Concatenation
 		model = nn.Sequential()
 		model:add(feature)
@@ -475,8 +479,12 @@ function task:defineModel(  )
 		local classifier = nn.Sequential()
 		classifier:add(nn.Reshape(outSize))
 		classifier:add(nn.Linear(outSize, numClass))
-		classifier:add(nn.LogSoftMax())
-
+		--classifier:add(nn.LogSoftMax())
+		if self.opt.loss == 'logSoftMax' then 
+			classifier:add(nn.LogSoftMax()) 
+		elseif self.opt.loss == 'l2' then
+			classifier:add(nn.Tanh())
+		end
 		-- Concatenation
 		model = nn.Sequential()
 		model:add(feature)
@@ -681,7 +689,7 @@ function task:evalBatch( outs, labels )
 	end
 	outLabels = outLabels:squeeze()
 	label = label:squeeze()
-	print(label[1])
+	--print(label[1])
 	--print("First labels of batch")
 	--print(outLabels[1])
 	--print(labels[1])
@@ -714,8 +722,8 @@ function task:processImageTrain( path, rw, rh, rf )
 
 	local im = self:loadImage( path )
 	--notdone()
-	local x = math.floor(rw * ( im:size(3) - cropSize ))
-	local y = math.floor(rh * ( im:size(2) - cropSize ))
+	local x = math.floor(rw * ( im:size(3) - cropSize )) + 1
+	local y = math.floor(rh * ( im:size(2) - cropSize )) + 1
 	im = image.crop(im, x, y, x + cropSize, y + cropSize )
 	if rf > 0.5 then
 		im = image.hflip(im)

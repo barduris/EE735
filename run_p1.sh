@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls;
 
 # 3. Loss function.
 #CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -loss hinge;
-#CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -loss l2;
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -loss l2 -learnRate 1e-4,1e-4;
 
 # 4. Convergence speed.
 #CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -learnRate 1e-3,1e-3;
