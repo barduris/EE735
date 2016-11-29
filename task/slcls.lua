@@ -358,7 +358,7 @@ function task:defineModel(  )
 		
 		-- Size of feature output
 		outSize = 64*outSize
-		print("Size of input to FC network: " .. outSize)
+		--print("Size of input to FC network: " .. outSize)
 
 		-- FC 5
 		local classifier = nn.Sequential()
@@ -379,6 +379,49 @@ function task:defineModel(  )
 		-- Define cifarNetLarge,
 		-- where the number of filters in each conv-layer of cifarNet is increased two times.
 		-- See https://github.com/torch/nn/tree/master/doc
+
+		local outSize = self.opt.cropSize
+		local feature = nn.Sequential()
+
+		-- Conv 1
+		feature:add(nn.SpatialConvolutionMM(3, 32*2, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 2
+		feature:add(nn.SpatialConvolutionMM(32*2, 32*2, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 3
+		feature:add(nn.SpatialConvolutionMM(2*32, 2*64, 5, 5, 1, 1, 2, 2))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 4
+		feature:add(nn.SpatialConvolutionMM(2*64, 2*64, 4, 4, 1, 1, 0, 0))
+		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialDropout(dropout))
+		
+		-- Size of feature output
+		outSize = 2*64*outSize
+
+		-- FC 5
+		local classifier = nn.Sequential()
+		classifier:add(nn.Reshape(outSize))
+		classifier:add(nn.Linear(outSize, numClass))
+		classifier:add(nn.LogSoftMax())
+
+		-- Concatenation
+		model = nn.Sequential()
+		model:add(feature)
+		model:add(classifier)
+
+
 		
 		-- END BLANK.
 		-------------
@@ -389,6 +432,52 @@ function task:defineModel(  )
 		-- where a batch normalization layer is added at each conv-layer of cifarNet.
 		-- See https://github.com/torch/nn/tree/master/doc
 		
+		local outSize = self.opt.cropSize
+		local feature = nn.Sequential()
+		-- Conv 1
+		feature:add(nn.SpatialConvolutionMM(3, 32, 5, 5, 1, 1, 2, 2))
+		feature:add(nn.BatchNormalization(32))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 2
+		feature:add(nn.SpatialConvolutionMM(32, 32, 5, 5, 1, 1, 2, 2))
+		feature:add(nn.BatchNormalization(32))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 3
+		feature:add(nn.SpatialConvolutionMM(32, 64, 5, 5, 1, 1, 2, 2))
+		feature:add(nn.BatchNormalization(64))
+		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
+		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
+		-- Conv 4
+		feature:add(nn.SpatialConvolutionMM(64, 64, 4, 4, 1, 1, 0, 0))
+		feature:add(nn.BatchNormalization(64))
+		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
+		feature:add(nn.ReLU())
+		feature:add(nn.SpatialDropout(dropout))
+		
+		-- Size of feature output
+		outSize = 64*outSize
+		--print("Size of input to FC network: " .. outSize)
+
+		-- FC 5
+		local classifier = nn.Sequential()
+		classifier:add(nn.Reshape(outSize))
+		classifier:add(nn.Linear(outSize, numClass))
+		classifier:add(nn.LogSoftMax())
+
+		-- Concatenation
+		model = nn.Sequential()
+		model:add(feature)
+		model:add(classifier)
+
+
 		-- END BLANK.
 		-------------
 	end
@@ -407,7 +496,9 @@ function task:defineCriterion(  )
 		-- FILL IN THE BLANK.
 		-- Choose a built-in log-softmax loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
+
 		loss = nn.ClassNLLCriterion()
+		
 		-- END BLANK.
 		-------------
 	elseif lossName == 'hinge' then
@@ -415,7 +506,9 @@ function task:defineCriterion(  )
 		-- FILL IN THE BLANK.
 		-- Choose a built-in hinge loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
-	
+
+		loss = nn.MultiMarginCriterion()
+
 		-- END BLANK.
 		-------------
 	elseif lossName == 'l2' then
@@ -424,6 +517,14 @@ function task:defineCriterion(  )
 		-- Choose a built-in l2 loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
 		
+
+		-- MSE
+		-- Probably need to use one-hot
+
+		-- L2 squared
+		loss = nn.MSECriterion()
+		loss.sizeAverage = false
+
 		-- END BLANK.
 		-------------
 	end
@@ -471,11 +572,19 @@ function task:getBatchTrain(  )
 	indeces = indeces[{{1, batchSize}}]
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
-	local label = torch.Tensor(batchSize) --zeros(batchSize, numClass)
+
 	local path
 	local rw
 	local rh
 	local rf
+
+	local label
+
+	if lossName == 'l2' then
+		label = torch.Tensor(batchSize, numClass):fill(-1)
+	else
+		label = torch.Tensor(batchSize) --zeros(batchSize, numClass)
+	end
 
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
@@ -483,7 +592,11 @@ function task:getBatchTrain(  )
 		rh = torch.uniform()
 		rf = torch.uniform()
 		input[i] = self:processImageTrain(path, rw, rh, rf)
-		label[i] = self.dbtr.iid2cid[ indeces[i] ]
+		if lossName == 'l2' then
+			label[i][indeces[i]] = 1
+		else
+			label[i] = self.dbtr.iid2cid[ indeces[i] ]
+		end
 	end
 
 	-- for some others maybe
@@ -519,9 +632,18 @@ function task:getBatchVal( iidStart )
 		input[i] = self:processImageVal(path)
 	end
 
+	local label
 	-- Need to reshape for other criterion
-	local label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize}}]
-	
+	if lossName == 'l2' then
+		label = torch.Tensor(batchSize, numClass):fill(-1)
+		local cid
+		for i = 1, batchSize do --iidStart, iidStart+batchSize do
+			cid = self.dbval.iid2cid[iidStart + i - 1]
+			label[i][cid] = 1
+		end
+	else
+		label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize}}]
+	end
 	-- END BLANK.
 	-------------
 	return input, label
@@ -536,12 +658,18 @@ function task:evalBatch( outs, labels )
 	-- This also depends on the type of loss.
 	
 	local _, outLabels = torch.max(outs, 2)
+	local label
+	if lossName == 'l2' then
+		_, label = torch.max(labels, 2)
+	else
+		label = labels
+	end
 	--print("First labels of batch")
 	--print(outLabels[1])
 	--print(labels[1])
 	local top1 = 0
 	for i = 1, batchSize do
-		if (outLabels[i][1] == labels[i]) then
+		if (outLabels[i][1] == label[i]) then
 			--print("Matched labels")
 			top1 = top1 + 1
 		end
