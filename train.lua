@@ -127,18 +127,18 @@ function train.trainBatch( inputsCpu, labelsCpu )
 
 	local layerParameters = {}
 	local layerGradientParameters = {}
-	local optIdx = 1
-	local lp, lgp
+	--local optIdx = 1
+	--local lp, lgp
 
 	for i = 1, train.model:size() do
 		local layer = train.model:get(i)
-		--layerParameters[i], layerGradientParameters[i] = layer:getParameters()
-		lp, lgp = layer:getParameters()
+		layerParameters[i], layerGradientParameters[i] = layer:getParameters()
+		--[[lp, lgp = layer:getParameters()
 		if lp:nDimension() > 0 then
 			layerParameters[optIdx] = lp
 			layerGradientParameters[optIdx] = lgp
 			optIdx = optIdx + 1
-		end
+		end--]]
 	end
 
 	--print("Model size: " .. train.model:size())
@@ -151,14 +151,14 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		--if layerParameters[i]:nDimension() == 0 then
 			--print("Skipping layer!\n\n")
 		--else
-		--if layerParameters[i]:nDimension() > 0 then
-		local feval = function(x)
-			return _, layerGradientParameters[i]
+		if layerParameters[i]:nDimension() > 0 then
+			local feval = function(x)
+				return _, layerGradientParameters[i]
+			end
+
+			optim.sgd(feval, layerParameters[i], train.optims[i])
+
 		end
-
-		optim.sgd(feval, layerParameters[i], train.optims[i])
-
-		--end
 	end
 
 	--assert(train.model:get(1):getParameters[1] ~= layerParameters[{1, 1}])

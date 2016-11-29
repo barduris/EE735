@@ -80,7 +80,16 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	-- 3. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call val.evalBatch().
 	
+	-- 1.
+	local output = val.model:forward(val.inputs)
 
+	-- 2.
+	local err = val.criterion:forward(output, val.labels)
+	val.lossEpoch = val.lossEpoch + err
+
+	-- 3.
+	local eval = val.evalBatch(output, val.labels)
+	val.evalEpoch = val.evalEpoch + eval
 
 	-- END BLANK.
 	-------------
