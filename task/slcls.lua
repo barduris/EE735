@@ -269,7 +269,7 @@ function task:setNumBatch(  )
 	-- FILL IN THE BLANK.
 	-- Determine number of train/val batches per epoch.
 
-	local numBatchTrain = self.opt.epochSize --math.floor( self.dbtr.iid2cid:numel(  ) / batchSize )
+	local numBatchTrain = self.opt.epochSize
 	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / batchSize )
 
 	-- END BLANK.
@@ -290,9 +290,7 @@ function task:estimateInputStat(  )
 		local rgbMean = torch.squeeze(torch.mean(torch.mean(torch.mean(batch, 1), 3), 4))
 		meanEstimate = meanEstimate + rgbMean
 	end
-	--print(meanEstimate)
 	meanEstimate:div(it)
-	--print(meanEstimate)
 
 	-- END BLANK.
 	-------------
@@ -358,7 +356,6 @@ function task:defineModel(  )
 		
 		-- Size of feature output
 		outSize = 64*outSize
-		--print("Size of input to FC network: " .. outSize)
 
 		-- FC 5
 		local classifier = nn.Sequential()
@@ -369,7 +366,6 @@ function task:defineModel(  )
 		elseif self.opt.loss == 'l2' then
 			classifier:add(nn.Tanh())
 		end
-		--classifier:add(nn.LogSoftMax())
 
 		-- Concatenation
 		model = nn.Sequential()
@@ -419,7 +415,6 @@ function task:defineModel(  )
 		local classifier = nn.Sequential()
 		classifier:add(nn.Reshape(outSize))
 		classifier:add(nn.Linear(outSize, numClass))
-		--classifier:add(nn.LogSoftMax())
 		if self.opt.loss == 'logSoftMax' then 
 			classifier:add(nn.LogSoftMax()) 
 		elseif self.opt.loss == 'l2' then
@@ -473,13 +468,11 @@ function task:defineModel(  )
 		
 		-- Size of feature output
 		outSize = 64*outSize
-		--print("Size of input to FC network: " .. outSize)
 
 		-- FC 5
 		local classifier = nn.Sequential()
 		classifier:add(nn.Reshape(outSize))
 		classifier:add(nn.Linear(outSize, numClass))
-		--classifier:add(nn.LogSoftMax())
 		if self.opt.loss == 'logSoftMax' then 
 			classifier:add(nn.LogSoftMax()) 
 		elseif self.opt.loss == 'l2' then
@@ -530,11 +523,6 @@ function task:defineCriterion(  )
 		-- Choose a built-in l2 loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
 		
-
-		-- MSE
-		-- Probably need to use one-hot
-
-		-- L2 squared
 		loss = nn.MSECriterion()
 		loss.sizeAverage = false
 
@@ -598,7 +586,7 @@ function task:getBatchTrain(  )
 	if lossName == 'l2' then
 		label = torch.Tensor(batchSize, numClass):fill(-1)
 	else
-		label = torch.Tensor(batchSize) --zeros(batchSize, numClass)
+		label = torch.Tensor(batchSize)
 	end
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
@@ -616,11 +604,6 @@ function task:getBatchTrain(  )
 			label[i] = cid
 		end
 	end
-
-	-- for some others maybe
-	-- classId = self.dbtr.iid2cid[ indeces[i] ]
-	--	label[i][classId] = 1
-
 
 	-- END BLANK.
 	-------------
@@ -642,7 +625,6 @@ function task:getBatchVal( iidStart )
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 
 	local numClass = self.dbtr.cid2name:size( 1 )
-	--batchSize = math.min(batchSize, numImage - iidStart)
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
 	local path
@@ -650,16 +632,13 @@ function task:getBatchVal( iidStart )
 		path = ffi.string( torch.data( self.dbval.iid2path[iidStart + i - 1] ))
 		input[i] = self:processImageVal(path)
 	end
-	--print(numClass)
 
 	local label
 	-- Need to reshape for other criterion
 	if lossName == 'l2' then
-		--print("Generating Tensor")
 		label = torch.Tensor(batchSize, numClass):fill(-1)
-		--print("Done with all that")
 		local cid
-		for i = 1, batchSize do --iidStart, iidStart+batchSize do
+		for i = 1, batchSize do
 			cid = self.dbval.iid2cid[iidStart + i - 1]
 			label[i][cid] = 1
 		end
@@ -689,14 +668,10 @@ function task:evalBatch( outs, labels )
 	end
 	outLabels = outLabels:squeeze()
 	label = label:squeeze()
-	--print(label[1])
-	--print("First labels of batch")
-	--print(outLabels[1])
-	--print(labels[1])
+
 	local top1 = 0
 	for i = 1, batchSize do
 		if (outLabels[i] == label[i]) then
-			--print("Matched labels")
 			top1 = top1 + 1
 		end
 	end
@@ -775,10 +750,10 @@ function task:resizeImage( im )
 		local height = im:size(2)
 		if width < height then
 			local ratio = imageSize / width
-			im = scale( im, imageSize, math.floor(ratio * height) )
+			im = image.scale( im, imageSize, math.floor(ratio * height) )
 		else
 			local ratio = imageSize / height
-			im = scale( im, math.floor(ratio * width), imageSize )
+			im = image.scale( im, math.floor(ratio * width), imageSize )
 		end
 	else
 		im = image.scale( im, imageSize, imageSize )

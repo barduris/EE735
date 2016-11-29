@@ -103,17 +103,10 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	-- 5. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call train.evalBatch().
 	
-	--print("Training batch")
-
 	-- 1. Feed-forward
     local output = train.model:forward(train.inputs)
 
     -- 2. Estimate loss
-    --print(output[1])
-	--print(train.labels[1])
-	--print("Output size: " .. output:size(1))
-	--print("Label size: " .. train.labels:size(1))
-	--print(train.criterion)
 	local err = train.criterion:forward(output, train.labels)
 	train.lossEpoch = train.lossEpoch + err
 
@@ -122,40 +115,16 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	train.model:backward(train.inputs, outputGradients)
 
 	-- 4. SGD
-	--[[sgd_params = {
-		learningRate = opt.learningRate,
-		--learningRateDecay = opt.learningRateDecay,
-		weightDecay = opt.weightDecay,
-		momentum = opt.momentum
-	}--]]
-	--local x, dl_dx = train.model:getParameters()
-
 	local layerParameters = {}
 	local layerGradientParameters = {}
-	--local optIdx = 1
-	--local lp, lgp
 
 	for i = 1, train.model:size() do
 		local layer = train.model:get(i)
 		layerParameters[i], layerGradientParameters[i] = layer:getParameters()
-		--[[lp, lgp = layer:getParameters()
-		if lp:nDimension() > 0 then
-			layerParameters[optIdx] = lp
-			layerGradientParameters[optIdx] = lgp
-			optIdx = optIdx + 1
-		end--]]
 	end
-
-	--print("Model size: " .. train.model:size())
-	--print("Number of layer parameters: " .. #layerParameters)
-	--print("Number of layer options: " .. #train.optims)
 
 	for i = 1, #layerParameters do
 
-
-		--if layerParameters[i]:nDimension() == 0 then
-			--print("Skipping layer!\n\n")
-		--else
 		if layerParameters[i]:nDimension() > 0 then
 			local feval = function(x)
 				return _, layerGradientParameters[i]
@@ -166,37 +135,9 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		end
 	end
 
-	--assert(train.model:get(1):getParameters[1] ~= layerParameters[{1, 1}])
-	
-	--[[
-	local , dw1
-
-	local feval_1 = function(x_new)
-		-- reset data
-		if x ~= x_new then x:copy(x_new) end
-		dl_dx:zero()
-
-		-- perform mini-batch gradient descent
-		local loss = train.criterion:forward(train.model:forward(inputs), targets)
-		model:backward(inputs, criterion:backward(model.output, targets))
-
-		return loss, dl_dx
-	end
-	_, fs = optim.sgd(feval, x, sgd_params)
-
-	print(gradients)
-
-	print(train.optims[1])
-	print(train.model[1])
-	_,fs = optim.sgd(feval,x,sgd_params)
-	--]]
-
 	-- 5. Evaluate epoch
 	local eval = train.evalBatch(output, train.labels)
 	train.evalEpoch = train.evalEpoch + eval
-	--print(train.labels[1])
-	--print(output[1])
-
 
 	-- END BLANK.
 	-------------
