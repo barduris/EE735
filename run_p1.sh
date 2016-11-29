@@ -16,4 +16,4 @@ CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls;
 
 # 4. Convergence speed.
 #CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -learnRate 1e-3,1e-3;
-#CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -net cifarNetBatchNorm -learnRate 1e-1;
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -net cifarNetBatchNorm -learnRate 1e-1,1e-1;

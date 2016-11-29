@@ -568,15 +568,17 @@ function task:getBatchTrain(  )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 	
+	local numClass = self.dbtr.cid2name:size( 1 )
+
 	local indeces = torch.randperm(numImage)
 	indeces = indeces[{{1, batchSize}}]
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
 
 	local path
-	local rw
-	local rh
-	local rf
+	local rw = 0.5
+	local rh = 0.5
+	local rf = 0
 
 	local label
 
@@ -585,12 +587,13 @@ function task:getBatchTrain(  )
 	else
 		label = torch.Tensor(batchSize) --zeros(batchSize, numClass)
 	end
-
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
-		rw = torch.uniform()
-		rh = torch.uniform()
-		rf = torch.uniform()
+		if augment then
+			rw = torch.uniform()
+			rh = torch.uniform()
+			rf = torch.uniform()
+		end
 		input[i] = self:processImageTrain(path, rw, rh, rf)
 		if lossName == 'l2' then
 			label[i][indeces[i]] = 1
@@ -623,6 +626,7 @@ function task:getBatchVal( iidStart )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 
+	local numClass = self.dbtr.cid2name:size( 1 )
 	batchSize = math.min(batchSize, numImage - iidStart)
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
