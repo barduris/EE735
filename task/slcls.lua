@@ -520,7 +520,7 @@ function task:getBatchVal( iidStart )
 	end
 
 	-- Need to reshape for other criterion
-	local label = self.dbVal.iid2cid[{{iidStart, iidStart+batchSize}}]
+	local label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize}}]
 	
 	-- END BLANK.
 	-------------
