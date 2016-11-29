@@ -590,8 +590,8 @@ function task:processImageVal( path )
 	--    You must call self:normalizeImage()
 
 	local im = self:loadImage( path )
-	local x = math.floor( im:size(3) - cropSize / 2.0 )
-	local y = math.floor( im:size(2) - cropSize / 2.0 )
+	local x = math.floor( (im:size(3) - cropSize) / 2.0 ) + 1
+	local y = math.floor( (im:size(2) - cropSize) / 2.0 ) + 1
 	im = image.crop(im, x, y, x + cropSize, y + cropSize )
 	local out = self:normalizeImage(im)
 	-- END BLANK.
