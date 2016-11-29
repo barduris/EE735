@@ -86,6 +86,7 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	-- 2.
 	print(output[1])
 	print(val.labels[1])
+	print("Input size: " .. val.inputs:size(1))
 	print("Output size: " .. output:size(1))
 	print("Label size: " .. val.labels:size(1))
 	print(val.criterion)
