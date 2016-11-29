@@ -653,6 +653,7 @@ function task:getBatchVal( iidStart )
 	else
 		label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize}}]
 	end
+	label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize}}]
 	-- END BLANK.
 	-------------
 	return input, label
