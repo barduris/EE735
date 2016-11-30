@@ -417,8 +417,8 @@ function task:defineModel(  )
 		classifier:add(nn.Linear(outSize, numClass))
 		if self.opt.loss == 'logSoftMax' then 
 			classifier:add(nn.LogSoftMax()) 
-		--elseif self.opt.loss == 'l2' then
-		--	classifier:add(nn.Tanh())
+		elseif self.opt.loss == 'l2' then
+			classifier:add(nn.Tanh())
 		end
 		-- Concatenation
 		model = nn.Sequential()
@@ -524,7 +524,7 @@ function task:defineCriterion(  )
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
 		
 		loss = nn.MSECriterion()
-		-- loss.sizeAverage = false
+		loss.sizeAverage = false
 
 		-- END BLANK.
 		-------------
