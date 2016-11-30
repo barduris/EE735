@@ -417,7 +417,7 @@ function task:defineModel(  )
 		classifier:add(nn.Linear(outSize, numClass))
 		if self.opt.loss == 'logSoftMax' then 
 			classifier:add(nn.LogSoftMax()) 
-		elseif self.opt.loss == 'l2' then
+		elseif self.opt.loss == 'l2' or self.opt.loss == 'hinge' then
 			classifier:add(nn.Tanh())
 		end
 		-- Concatenation
