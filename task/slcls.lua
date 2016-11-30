@@ -524,7 +524,7 @@ function task:defineCriterion(  )
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
 		
 		loss = nn.MSECriterion()
-		loss.sizeAverage = false
+		-- loss.sizeAverage = false
 
 		-- END BLANK.
 		-------------
