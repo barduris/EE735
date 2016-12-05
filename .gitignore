@@ -2,6 +2,7 @@
 .nfs*
 data/cache
 data/db/CIFAR10/
+data/db/VOC07/
 cutorch.lua
 cunn.lua
 cudnn.lua
