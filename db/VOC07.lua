@@ -48,16 +48,67 @@ function createDb( setName )
 	local iid2path = {}
 	local iid2cid = {}
 
-	local file = io.open(dbDir .. 'classnames.txt')
-	if file then
+	--local file = io.open(dbDir .. 'classnames.txt')
+	--if file then
+	--	for line in file:lines() do
+	--		cid2name[#cid2name + 1] = line
+	--	end
+	--end
+
+	--cid2name[1] = '
+	--if setName == 'test' then setName = 'val' end
+	-- Hard coding the class names since I really don't feel
+	-- like dealing with regexp errors right now
+	cid2name = {'aeroplane', 'bicycle', 'bird',
+	 	'boat', 'bottle', 'bus', 'car', 'cat', 'chair',
+	 	'cow', 'diningtable', 'dog', 'horse', 'motorbike',
+	 	'person', 'pottedplant', 'sheep', 'sofa', 'train',
+	  	'tvmonitor'}
+
+	assert(#cid2name == 20)
+	
+	--file = io.open(dbDir .. 'ImageSets/Layout/' .. setName .. '.txt')
+	--for line in file:lines() do
+	--	iid2path[#iid2path + 1] = dbDir .. 'JPEGImages/' .. line .. '.jpg'
+	--end
+	auxid = {}
+	for cid = 1, #cid2name do --class in cid2name do
+		local class = cid2name[cid]
+		local file = io.open(dbDir .. 'ImageSets/Main/' .. class .. '_' .. setName .. '.txt')
+		local iid = 1
 		for line in file:lines() do
-			cid2name[#cid2name + 1] = line
+			local tmp = line:split('%s+')
+			local pth, val = tmp[1], tonumber(tmp[2])
+			if cid == 1 then
+				iid2cid[iid] = torch.totable(torch.zeros(#cid2name))--{}--torch.Tensor(#cid2name)
+				iid2path[iid] = dbDir .. 'JPEGImages/' .. pth .. '.jpg'
+				auxid[iid] = 1
+			end
+			--val = math.floor(val + 0.5)
+			--iid2cid[iid][cid] = val--[#(iid2cid[iid]) + 1] = val
+			--iid2cid[iid][auxid[iid]] = val*cid
+			--auxid[iid] = auxid[iid] + val
+			--print(type(val))
+			if val == 1 then
+				--print(val)
+				iid2cid[iid][auxid[iid]] = cid
+				auxid[iid] = auxid[iid] + 1
+			end
+			iid = iid + 1
 		end
 	end
 
-
+	--print('iid2cid')
+	--print(#iid2cid)
+	--print('iid2path')
+	--print(#iid2path)
+	--print("setName " .. setName)
+	
+	
+	--[[
 	if setName == 'train' then
-		file = io.open(dbDir .. 'train_impaths.txt')
+		file = io.open(dbDir .. 'ImageSets/Main/' ..'train.txt')
+		
 		for line in file:lines() do
 			iid2path[#iid2path + 1] = dbDir .. line
 		end
@@ -75,6 +126,7 @@ function createDb( setName )
 			iid2cid[#iid2cid + 1] = line
 		end
 	end
+	--]]
 
 	-- END BLANK.
 	-------------

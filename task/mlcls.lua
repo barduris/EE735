@@ -176,16 +176,16 @@ function task:parseOption( arg )
 	cmd:option( '-numDonkey', 4, 'Number of donkeys for data loading.' )
 	-- Data.
 	cmd:option( '-data', 'VOC07', 'Name of dataset defined in "./db/"' )
-	cmd:option( '-imageSize', 36, 'Short side of initial resize.' )
-	cmd:option( '-cropSize', 32, 'Size of random square crop.' )
+	cmd:option( '-imageSize', 256, 'Short side of initial resize.' )
+	cmd:option( '-cropSize', 244, 'Size of random square crop.' )
 	cmd:option( '-keepAspect', 0, '1 for keep, 0 for no.' )
 	cmd:option( '-normalizeStd', 0, '1 for normalize piexel std to 1, 0 for no.' )
 	cmd:option( '-augment', 1, '1 for data augmentation, 0 for no.' )
 	cmd:option( '-caffeInput', 0, '1 for caffe input, 0 for no.' )
 	-- Model.
-	cmd:option( '-net', 'cifarNet', 'Network like cifarNet, cifarNetLarge, cifarNetBatchNorm.' ) --------------------------------------------
+	cmd:option( '-net', 'alexNet', 'Network like cifarNet, cifarNetLarge, cifarNetBatchNorm.' ) --------------------------------------------
 	cmd:option( '-dropout', 0.5, 'Dropout ratio.' )
-	cmd:option( '-loss', 'logSoftMax', 'Loss like logSoftMax, hinge, L2.' )
+	cmd:option( '-loss', 'multiHinge', 'Loss like logSoftMax, hinge, L2.' )
 	-- Train.
 	cmd:option( '-numEpoch', 200, 'Number of total epochs to run.' )
 	cmd:option( '-epochSize', 195, 'Number of batches per epoch.' )
@@ -248,7 +248,11 @@ function task:createDbTrain(  )
 	local numClass = dbtr.cid2name:size( 1 )
 	self:print( string.format( 'Train: %d images, %d classes.', numImage, numClass ) )
 	-- Verification.
-	assert( dbtr.iid2path:size( 1 ) == dbtr.iid2cid:numel(  ) )
+	--print(dbtr.iid2path:size())
+	--print(dbtr.iid2cid:size())
+	--print(dbtr.cid2name:size())
+	--print(dbtr.iid2cid:max())
+	assert( dbtr.iid2path:size( 1 ) == dbtr.iid2cid:size( 1 ) )
 	assert( dbtr.cid2name:size( 1 ) == dbtr.iid2cid:max(  ) )
 	return dbtr
 end
@@ -259,7 +263,7 @@ function task:createDbVal(  )
 	local numClass = dbval.cid2name:size( 1 )
 	self:print( string.format( 'Val: %d images, %d classes.', numImage, numClass ) )
 	-- Verification.
-	assert( dbval.iid2path:size( 1 ) == dbval.iid2cid:numel(  ) )
+	assert( dbval.iid2path:size( 1 ) == dbval.iid2cid:size( 1 ) )
 	assert( dbval.cid2name:size( 1 ) == dbval.iid2cid:max(  ) )
 	return dbval
 end
@@ -302,190 +306,31 @@ function task:defineModel(  )
 	local numClass = self.dbtr.cid2name:size( 1 )
 	local dropout = self.opt.dropout
 	local model
-	if netName == 'cifarNet' then
-		---------------------
-		-- FILL IN THE BLANK.
-		-- Define cifarNet as follows.
-		-- See https://github.com/torch/nn/tree/master/doc
-		-- 1. Create a feature network.
-		--    Conv1) 32 filters of 5*5 size with a stride 1 and a pad 2.
-		--           Add ReLU activation function.
-		--           Add max pooling with a 3*3 size window with a stride 2 and a pad 1.
-		--    Conv2) 32 filters of 5*5 size with stride 1 and padding 2.
-		--           Add ReLU activation function.
-		--           Add average pooling with a 3*3 size window with a stride 2 and a pad 1.
-		--    Conv3) 64 filters of 5*5 size with a stride 1 and a pad 2.
-		--           Add ReLU activation function.
-		--           Add average pooling with a 3*3 size window with a stride 2 and a pad 1.
-		--    Conv4) 64 filters of 4*4 size with a stride 1 and a pad 0.
-		--           Add ReLU activation function.
-		--           Add dropout.
-		-- 2. Create a classifier network.
-		--    FC5) Fully connect input nodes with numClass hidden nodes.
-		--         Add log-softmax normalizatioin.
-		-- 3. Create full model by concatenating the feature net and the classification net.
-		--    The reason we separately build two networks and combine them is to 
-		--    apply different learning rate to different network modules for the next dl-practice.
-		--    See the function task:groupParams() which will help your understanding.
+	
+	if netName == 'alexNet' then
+		require 'loadcaffe'
+		local alexnet = loadcaffe.load(gpath.net.alex_caffe_proto, gpath.net.alex_caffe_model, 'cudnn')
+		--print(alexnet)
+		local outLayer = alexnet:get(alexnet:size())
+		alexnet:remove()
+		local hSize = alexnet:get(alexnet:size()).weight:size(2)
+		--print(hSize)
+		alexnet:remove()
+		--print(alexnet)
 		
-		local outSize = self.opt.cropSize
-		local feature = nn.Sequential()
-		-- Conv 1
-		feature:add(nn.SpatialConvolutionMM(3, 32, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 2
-		feature:add(nn.SpatialConvolutionMM(32, 32, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 3
-		feature:add(nn.SpatialConvolutionMM(32, 64, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 4
-		feature:add(nn.SpatialConvolutionMM(64, 64, 4, 4, 1, 1, 0, 0))
-		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialDropout(dropout))
+		--model = nn.Sequential()
+		local last = nn.Sequential()
+		--print(type(hSize))
+		--print(type(numClass))
+		last:add(nn.Linear(hSize, numClass))
+		last:add(outLayer)
+		--print(last)
 		
-		-- Size of feature output
-		outSize = 64*outSize
-
-		-- FC 5
-		local classifier = nn.Sequential()
-		classifier:add(nn.Reshape(outSize))
-		classifier:add(nn.Linear(outSize, numClass))
-		if self.opt.loss == 'logSoftMax' then 
-			classifier:add(nn.LogSoftMax()) 
-		elseif self.opt.loss == 'l2' then
-			classifier:add(nn.Tanh())
-		end
-
-		-- Concatenation
 		model = nn.Sequential()
-		model:add(feature)
-		model:add(classifier)
 
-		-- END BLANK.
-		-------------
-	elseif netName == 'cifarNetLarge' then
-		---------------------
-		-- FILL IN THE BLANK.
-		-- Define cifarNetLarge,
-		-- where the number of filters in each conv-layer of cifarNet is increased two times.
-		-- See https://github.com/torch/nn/tree/master/doc
+		model:add(alexnet)
+		model:add(last)
 
-		local outSize = self.opt.cropSize
-		local feature = nn.Sequential()
-
-		-- Conv 1
-		feature:add(nn.SpatialConvolutionMM(3, 32*2, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 2
-		feature:add(nn.SpatialConvolutionMM(32*2, 32*2, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 3
-		feature:add(nn.SpatialConvolutionMM(2*32, 2*64, 5, 5, 1, 1, 2, 2))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 4
-		feature:add(nn.SpatialConvolutionMM(2*64, 2*64, 4, 4, 1, 1, 0, 0))
-		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialDropout(dropout))
-		
-		-- Size of feature output
-		outSize = 2*64*outSize
-
-		-- FC 5
-		local classifier = nn.Sequential()
-		classifier:add(nn.Reshape(outSize))
-		classifier:add(nn.Linear(outSize, numClass))
-		if self.opt.loss == 'logSoftMax' then 
-			classifier:add(nn.LogSoftMax()) 
-		elseif self.opt.loss == 'l2' or self.opt.loss == 'hinge' then
-			classifier:add(nn.Tanh())
-		end
-		-- Concatenation
-		model = nn.Sequential()
-		model:add(feature)
-		model:add(classifier)
-
-
-		
-		-- END BLANK.
-		-------------
-	elseif netName == 'cifarNetBatchNorm' then
-		---------------------
-		-- FILL IN THE BLANK.
-		-- Define cifarNetBatchNorm,
-		-- where a batch normalization layer is added at each conv-layer of cifarNet.
-		-- See https://github.com/torch/nn/tree/master/doc
-		
-		local outSize = self.opt.cropSize
-		local feature = nn.Sequential()
-		-- Conv 1
-		feature:add(nn.SpatialConvolutionMM(3, 32, 5, 5, 1, 1, 2, 2))
-		feature:add(nn.SpatialBatchNormalization(32))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialMaxPooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 2
-		feature:add(nn.SpatialConvolutionMM(32, 32, 5, 5, 1, 1, 2, 2))
-		feature:add(nn.SpatialBatchNormalization(32))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 3
-		feature:add(nn.SpatialConvolutionMM(32, 64, 5, 5, 1, 1, 2, 2))
-		feature:add(nn.SpatialBatchNormalization(64))
-		outSize = math.floor((outSize + 2*2 - 5) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialAveragePooling(3, 3, 2, 2, 1, 1))
-		outSize = math.floor((outSize + 2*1 - 3) / 2 + 1)
-		-- Conv 4
-		feature:add(nn.SpatialConvolutionMM(64, 64, 4, 4, 1, 1, 0, 0))
-		feature:add(nn.SpatialBatchNormalization(64))
-		outSize = math.floor((outSize + 2*0 - 4) / 1 + 1)
-		feature:add(nn.ReLU())
-		feature:add(nn.SpatialDropout(dropout))
-		
-		-- Size of feature output
-		outSize = 64*outSize
-
-		-- FC 5
-		local classifier = nn.Sequential()
-		classifier:add(nn.Reshape(outSize))
-		classifier:add(nn.Linear(outSize, numClass))
-		if self.opt.loss == 'logSoftMax' then 
-			classifier:add(nn.LogSoftMax()) 
-		elseif self.opt.loss == 'l2' then
-			classifier:add(nn.Tanh())
-		end
-		-- Concatenation
-		model = nn.Sequential()
-		model:add(feature)
-		model:add(classifier)
-
-
-		-- END BLANK.
-		-------------
 	end
 	model:cuda(  )
 	-- Check options.
@@ -497,7 +342,17 @@ end
 function task:defineCriterion(  )
 	local lossName = self.opt.loss
 	local loss
-	if lossName == 'logSoftMax' then
+	if lossName == 'multiHinge' then
+		---------------------
+		-- FILL IN THE BLANK.
+		-- Choose a built-in hinge loss function in torch.
+		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
+
+		loss = nn.MultiLabelMarginCriterion()
+
+		-- END BLANK.
+		-------------
+	elseif lossName == 'logSoftMax' then
 		---------------------
 		-- FILL IN THE BLANK.
 		-- Choose a built-in log-softmax loss function in torch.
@@ -505,16 +360,6 @@ function task:defineCriterion(  )
 
 		loss = nn.ClassNLLCriterion()
 		
-		-- END BLANK.
-		-------------
-	elseif lossName == 'hinge' then
-		---------------------
-		-- FILL IN THE BLANK.
-		-- Choose a built-in hinge loss function in torch.
-		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
-
-		loss = nn.MultiMarginCriterion()
-
 		-- END BLANK.
 		-------------
 	elseif lossName == 'l2' then
@@ -581,13 +426,13 @@ function task:getBatchTrain(  )
 	local rh = 0.5
 	local rf = 0
 
-	local label
-
-	if lossName == 'l2' then
-		label = torch.Tensor(batchSize, numClass):fill(-1)
-	else
-		label = torch.Tensor(batchSize)
-	end
+	local label = torch.Tensor(batchSize, numClass)
+	--print(numClass)
+	--if lossName == 'l2' then
+	--	label = torch.Tensor(batchSize, numClass):fill(-1)
+	--else
+	--	label = torch.Tensor(batchSize)
+	--end
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
 		if augment then
@@ -596,13 +441,14 @@ function task:getBatchTrain(  )
 			rf = torch.uniform()
 		end
 		input[i] = self:processImageTrain(path, rw, rh, rf)
-		local cid = self.dbtr.iid2cid[ indeces[i] ]
-		if lossName == 'l2' then
+		label[i] = self.dbtr.iid2cid[ indeces[i] ]
+		--local cid = self.dbtr.iid2cid[ indeces[i] ]
+		--if lossName == 'l2' then
 
-			label[i][cid] = 1
-		else
-			label[i] = cid
-		end
+		--	label[i][cid] = 1
+		--else
+		--	label[i] = cid
+		--end
 	end
 
 	-- END BLANK.
