@@ -2,7 +2,17 @@
 # Uncomment and execute a line you want to execute.
 
 # 1. Initial baseline.
-CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -learnRate 0,1e-2;
+CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -learnRate 1e-5,1e-3 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
+
+# 2. Learning from scratch
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -net alexNetScratch -learnRate 1e-2,1e-2 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
+
+# 3. Entropy-based loss
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -loss entropy -learnRate 1e-5,1e-2 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
+
+# 4. Mean average precision
+
+
 
 # 2. Overfitting.
 #CUDA_VISIBLE_DEVICES=0 th main.lua -task slcls -weightDecay 0;

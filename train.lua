@@ -75,10 +75,10 @@ function train.train( epoch )
 	trainLogger:write( string.format( '%03d %.4f %.4f\n', epoch, train.lossEpoch, train.evalEpoch ) )
 	trainLogger:close(  )
 	-- Save model.
-	train.print( 'Save model.' )
-	train.model:clearState()
-	saveDataParallel( train.pathModel:format( epoch ), train.model )
-	torch.save( train.pathOptim:format( epoch ), train.optims )
+	--train.print( 'Save model.' )
+	--train.model:clearState()
+	--saveDataParallel( train.pathModel:format( epoch ), train.model )
+	--torch.save( train.pathOptim:format( epoch ), train.optims )
 	train.print( 'Done.' )
 	collectgarbage(  )
 end
@@ -102,7 +102,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 	--    See the function task:groupParams() which will help your understanding.
 	-- 5. Compute evaluation metric (e.g. top-1) and accumulate that to train.evalEpoch.
 	--    You must call train.evalBatch().
-	
+
 	-- 1. Feed-forward
     local output = train.model:forward(train.inputs)
 

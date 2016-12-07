@@ -177,7 +177,7 @@ function task:parseOption( arg )
 	-- Data.
 	cmd:option( '-data', 'VOC07', 'Name of dataset defined in "./db/"' )
 	cmd:option( '-imageSize', 256, 'Short side of initial resize.' )
-	cmd:option( '-cropSize', 244, 'Size of random square crop.' )
+	cmd:option( '-cropSize', 224, 'Size of random square crop.' )
 	cmd:option( '-keepAspect', 0, '1 for keep, 0 for no.' )
 	cmd:option( '-normalizeStd', 0, '1 for normalize piexel std to 1, 0 for no.' )
 	cmd:option( '-augment', 1, '1 for data augmentation, 0 for no.' )
@@ -186,6 +186,7 @@ function task:parseOption( arg )
 	cmd:option( '-net', 'alexNet', 'Network like cifarNet, cifarNetLarge, cifarNetBatchNorm.' ) --------------------------------------------
 	cmd:option( '-dropout', 0.5, 'Dropout ratio.' )
 	cmd:option( '-loss', 'multiHinge', 'Loss like logSoftMax, hinge, L2.' )
+	cmd:option( '-eval', 'top-1', 'Evaluation metric.' )
 	-- Train.
 	cmd:option( '-numEpoch', 200, 'Number of total epochs to run.' )
 	cmd:option( '-epochSize', 195, 'Number of batches per epoch.' )
@@ -231,6 +232,7 @@ function task:parseOption( arg )
 	assert( opt.cropSize > 0 )
 	assert( opt.imageSize >= opt.cropSize )
 	assert( opt.net:len(  ) > 0 )
+	assert( opt.eval:len(  ) > 0 )
 	assert( opt.dropout <= 1 and opt.dropout >= 0 )
 	assert( opt.loss:len(  ) > 0 )
 	assert( opt.numEpoch > 0 )
@@ -274,7 +276,7 @@ function task:setNumBatch(  )
 	-- Determine number of train/val batches per epoch.
 
 	local numBatchTrain = self.opt.epochSize
-	local numBatchVal = math.floor( self.dbval.iid2cid:numel(  ) / batchSize )
+	local numBatchVal = math.floor( self.dbval.iid2cid:size( 1 ) / batchSize )
 
 	-- END BLANK.
 	-------------
@@ -307,7 +309,7 @@ function task:defineModel(  )
 	local dropout = self.opt.dropout
 	local model
 	
-	if netName == 'alexNet' then
+	if netName == 'alexNet' or netName == 'alexNetScratch' then
 		require 'loadcaffe'
 		local alexnet = loadcaffe.load(gpath.net.alex_caffe_proto, gpath.net.alex_caffe_model, 'cudnn')
 		--print(alexnet)
@@ -323,13 +325,23 @@ function task:defineModel(  )
 		--print(type(hSize))
 		--print(type(numClass))
 		last:add(nn.Linear(hSize, numClass))
-		last:add(outLayer)
+		if lossName == 'multiHinge' then
+			last:add(outLayer)
+		end
+		if netName == 'alexNetScratch' then
+			for i = 1, alexnet:size() do
+				alexnet:get(i):reset()
+			end
+		end
 		--print(last)
 		
 		model = nn.Sequential()
 
 		model:add(alexnet)
 		model:add(last)
+		
+
+		
 
 	end
 	model:cuda(  )
@@ -352,13 +364,13 @@ function task:defineCriterion(  )
 
 		-- END BLANK.
 		-------------
-	elseif lossName == 'logSoftMax' then
+	elseif lossName == 'entropy' then
 		---------------------
 		-- FILL IN THE BLANK.
 		-- Choose a built-in log-softmax loss function in torch.
 		-- See https://github.com/torch/nn/blob/master/doc/criterion.md
 
-		loss = nn.ClassNLLCriterion()
+		loss = nn.MultiLabelSoftMarginCriterion() --nn.ClassNLLCriterion()
 		
 		-- END BLANK.
 		-------------
@@ -427,6 +439,9 @@ function task:getBatchTrain(  )
 	local rf = 0
 
 	local label = torch.Tensor(batchSize, numClass)
+	if lossName == 'entropy' then
+		label:fill(0)
+	end
 	--print(numClass)
 	--if lossName == 'l2' then
 	--	label = torch.Tensor(batchSize, numClass):fill(-1)
@@ -441,7 +456,15 @@ function task:getBatchTrain(  )
 			rf = torch.uniform()
 		end
 		input[i] = self:processImageTrain(path, rw, rh, rf)
-		label[i] = self.dbtr.iid2cid[ indeces[i] ]
+		local cid = self.dbtr.iid2cid[ indeces[i] ]
+		if lossName == 'entropy' then
+			for icid = 1,cid:size(1) do
+				if cid[icid] == 0 then break end
+				label[i][cid[icid]] = 1
+			end
+		else
+			label[i] = cid
+		end
 		--local cid = self.dbtr.iid2cid[ indeces[i] ]
 		--if lossName == 'l2' then
 
@@ -473,16 +496,32 @@ function task:getBatchVal( iidStart )
 	local numClass = self.dbtr.cid2name:size( 1 )
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
+	local label = torch.Tensor(batchSize, numClass)
+	if lossName == 'entropy' then
+		label:fill(0)
+	end
 	local path
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbval.iid2path[iidStart + i - 1] ))
 		input[i] = self:processImageVal(path)
+		--label[i] = self.dbval.iid2cid[iidStart + i - 1]
+		local cid = self.dbtr.iid2cid[ iidStart + i - 1 ]
+		if lossName == 'entropy' then
+			for icid = 1,cid:size(1) do
+				if cid[icid] == 0 then break end
+				label[i][cid[icid]] = 1
+			end
+		else
+			label[i] = cid
+		end
 	end
 
-	local label
+	--local label = torch.Tensor(batchSize, numClass)
 	-- Need to reshape for other criterion
+	--[[
 	if lossName == 'l2' then
 		label = torch.Tensor(batchSize, numClass):fill(-1)
+		label[i] = self.dbtr.iid2cid[ indeces[i] ]
 		local cid
 		for i = 1, batchSize do
 			cid = self.dbval.iid2cid[iidStart + i - 1]
@@ -491,6 +530,7 @@ function task:getBatchVal( iidStart )
 	else
 		label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize-1}}]
 	end
+	--]]
 
 	-- END BLANK.
 	-------------
@@ -499,26 +539,43 @@ end
 function task:evalBatch( outs, labels )
 	local batchSize = self.opt.batchSize
 	local lossName = self.opt.loss
+	local eval = self.opt.eval
 	assert( batchSize == outs:size( 1 ) )
 	---------------------
 	-- FILL IN THE BLANK.
 	-- Compare the network output and label to find top-1 accuracy.
 	-- This also depends on the type of loss.
 	
+	local numClass = self.dbtr.cid2name:size( 1 )
 	local _, outLabels = torch.max(outs, 2)
+	--[[
 	local label
+	
 	if lossName == 'l2' then
 		_, label = torch.max(labels, 2)
 	else
 		label = labels
 	end
+	--]]
+	--if lossName == 'entropy' then
+	--	_, labels = torch.max(labels, 2)
+	--else
 	outLabels = outLabels:squeeze()
-	label = label:squeeze()
+	--label = label:squeeze()
 
 	local top1 = 0
 	for i = 1, batchSize do
-		if (outLabels[i] == label[i]) then
-			top1 = top1 + 1
+		if lossName == 'entropy' then
+			if (labels[i][outLabels[i]] == 1) then
+					top1 = top1 + 1
+				end
+		else
+			for j = 1, numClass do
+				if (outLabels[i] == labels[i][j]) then
+					top1 = top1 + 1
+					break
+				end
+			end
 		end
 	end
 	top1 = top1 / batchSize
