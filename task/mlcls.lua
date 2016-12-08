@@ -547,42 +547,79 @@ function task:evalBatch( outs, labels )
 	-- This also depends on the type of loss.
 	
 	local numClass = self.dbtr.cid2name:size( 1 )
-	local _, outLabels = torch.max(outs, 2)
-	--[[
-	local label
-	
-	if lossName == 'l2' then
-		_, label = torch.max(labels, 2)
-	else
-		label = labels
-	end
-	--]]
-	--if lossName == 'entropy' then
-	--	_, labels = torch.max(labels, 2)
-	--else
-	outLabels = outLabels:squeeze()
-	--label = label:squeeze()
+	if eval == 'map' then
 
-	local top1 = 0
-	for i = 1, batchSize do
-		if lossName == 'entropy' then
-			if (labels[i][outLabels[i]] == 1) then
-					top1 = top1 + 1
+
+		local classified = tf.zeros(numClass)
+		local truth = tf.zeros(numClass)
+
+		for i = 1, batchSize do
+			if lossName == 'entropy' then
+				for j = 1, numClass do
+					if labels[i][j] == 1 then
+						truth[j] = truth[j] + 1
+						if out[i][j] == 1 then
+						--top1 = top1 + 1
+						--break
+					end
+					end
+
 				end
-		else
-			for j = 1, numClass do
-				if (outLabels[i] == labels[i][j]) then
-					top1 = top1 + 1
-					break
+			else
+				for j = 1, numClass do
+					if labels[i][j] == 1 then --(outLabels[i] == labels[i][j]) then
+						--top1 = top1 + 1
+						--break
+						truth[j] = truth[j] + 1
+					end
 				end
 			end
 		end
-	end
-	top1 = top1 / batchSize
 
-	-- END BLANK.
-	-------------
-	return top1 * 100
+		return 0
+
+
+	elseif eval == 'top-1' then
+
+		
+		local _, outLabels = torch.max(outs, 2)
+		--[[
+		local label
+		
+		if lossName == 'l2' then
+			_, label = torch.max(labels, 2)
+		else
+			label = labels
+		end
+		--]]
+		--if lossName == 'entropy' then
+		--	_, labels = torch.max(labels, 2)
+		--else
+
+		outLabels = outLabels:squeeze()
+		--label = label:squeeze()
+
+		local top1 = 0
+		for i = 1, batchSize do
+			if lossName == 'entropy' then
+				if (labels[i][outLabels[i]] == 1) then
+						top1 = top1 + 1
+					end
+			else
+				for j = 1, numClass do
+					if (outLabels[i] == labels[i][j]) then
+						top1 = top1 + 1
+						break
+					end
+				end
+			end
+		end
+		top1 = top1 / batchSize
+
+		-- END BLANK.
+		-------------
+		return top1 * 100
+	end
 end
 require 'image'
 function task:processImageTrain( path, rw, rh, rf )
