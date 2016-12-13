@@ -63,3 +63,23 @@ for e = se, opt.numEpoch do
 	teacher.train( e )
 	evaluator.evaluate( e )
 end
+-- Save model.
+model.model:clearState()
+saveDataParallel( opt.pathModel:format( 0 ), model.model )
+torch.save( opt.pathOptim:format( 0 ), model.optims )
+
+if opt.heatmaps then
+
+	--( opt, batchSize, pathLog )
+	--local dbDir = paths.concat( opt.dirModel, 
+	local pathLog = paths.concat( opt.dirModel, 'hm.log' )--paths.concat( dbDir, 'HeatmapTest/log.log' )
+	local input, label, batchSize = task:getBatchHeatmap(  )
+	--local batchSize = input[1]:size(1)
+	hmtor = paths.dofile( 'hm.lua' )
+	hmtor.setOption( opt, batchSize, pathLog )
+	hmtor.setModel( model )
+	--hmtor.setDonkey( donkeys )
+	--hmtor.setFunction( funval1, funval2 )
+	hmtor.evaluate( input, label )
+
+end

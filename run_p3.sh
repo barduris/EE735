@@ -2,7 +2,19 @@
 # Uncomment and execute a line you want to execute.
 
 # 1. Initial baseline.
-#CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -learnRate 1e-5,1e-3 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
+CUDA_VISIBLE_DEVICES=0 th main.lua -task wsol -poolType max -learnRate 1e-2,1e-2 -batchSize 64 -epochSize 10 -numEpoch 1;
+
+# 2. Average pooling
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task wsol -poolType average -learnRate 1e-2,1e-2 -batchSize 64 -epochSize 10 -numEpoch 1; # -batchSize 64 -epochSize 10 -numEpoch 10;; # -eval map -keepAspect 1 -batchSize 64 -epochSize 25 -numEpoch 50;
+
+# 3. Siamese single
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task wsol -net siamese -learnRate 1e-2,1e-2  -batchSize 64 -epochSize 10 -numEpoch 1; #; # -keepAspect 1 -batchSize 64 -epochSize 25 -numEpoch 50;
+
+# 3. Siamese mulit
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task wsol -net siamese -multiScale 1 -learnRate 1e-2,1e-2 -batchSize 64 -epochSize 10 -numEpoch 1; #; #-keepAspect 1 -batchSize 64 -epochSize 25 -numEpoch 50;
+
+
+
 
 # 2. Learning from scratch
 #CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -net alexNetScratch -learnRate 1e-3,1e-3 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
@@ -12,7 +24,7 @@
 
 # 4. Mean average precision
 #-eval map
-CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -eval map -learnRate 1e-5,1e-3 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
+#CUDA_VISIBLE_DEVICES=0 th main.lua -task mlcls -eval map -learnRate 1e-5,1e-3 -epochSize 20 -keepAspect 1 -batchSize 64 -numEpoch 20;
 
 
 # 2. Overfitting.

@@ -30,10 +30,14 @@ function task:setOption( arg )
 	assert( self.opt.net )
 	assert( self.opt.dropout )
 	assert( self.opt.loss )
+	assert( self.opt.eval )
+	assert( self.opt.poolType )
 	assert( self.opt.numEpoch )
 	assert( self.opt.epochSize )
 	assert( self.opt.batchSize )
 	assert( self.opt.learnRate )
+	assert( self.opt.multiScale )
+	assert( self.opt.heatmaps )
 	assert( self.opt.momentum )
 	assert( self.opt.weightDecay )
 	assert( self.opt.startFrom )
@@ -178,7 +182,7 @@ function task:parseOption( arg )
 	cmd:option( '-data', 'VOC07', 'Name of dataset defined in "./db/"' )
 	cmd:option( '-imageSize', 256, 'Short side of initial resize.' )
 	cmd:option( '-cropSize', 224, 'Size of random square crop.' )
-	cmd:option( '-keepAspect', 0, '1 for keep, 0 for no.' )
+	cmd:option( '-keepAspect', 1, '1 for keep, 0 for no.' )
 	cmd:option( '-normalizeStd', 0, '1 for normalize piexel std to 1, 0 for no.' )
 	cmd:option( '-augment', 1, '1 for data augmentation, 0 for no.' )
 	cmd:option( '-caffeInput', 0, '1 for caffe input, 0 for no.' )
@@ -187,10 +191,13 @@ function task:parseOption( arg )
 	cmd:option( '-dropout', 0.5, 'Dropout ratio.' )
 	cmd:option( '-loss', 'multiHinge', 'Loss like logSoftMax, hinge, L2.' )
 	cmd:option( '-eval', 'top-1', 'Evaluation metric.' )
+	cmd:option( '-poolType', 'max', 'Type of global pooling layers.' )
+	cmd:option( '-multiScale', 0, 'Test type.' )
+	cmd:option( '-heatmaps', 1, 'Generate heatmaps.' )
 	-- Train.
-	cmd:option( '-numEpoch', 200, 'Number of total epochs to run.' )
-	cmd:option( '-epochSize', 195, 'Number of batches per epoch.' )
-	cmd:option( '-batchSize', 256, 'Mini-batch size.' )
+	cmd:option( '-numEpoch', 50, 'Number of total epochs to run.' )
+	cmd:option( '-epochSize', 25, 'Number of batches per epoch.' )
+	cmd:option( '-batchSize', 64, 'Mini-batch size.' )
 	cmd:option( '-learnRate', '1e-2,1e-2', 'Supports multi-lr for multi-module like lr1,lr2,lr3,...' )
 	cmd:option( '-momentum', 0.9, 'Momentum.' )
 	cmd:option( '-weightDecay', 1e-4, 'Weight decay.' )
@@ -233,6 +240,9 @@ function task:parseOption( arg )
 	assert( opt.imageSize >= opt.cropSize )
 	assert( opt.net:len(  ) > 0 )
 	assert( opt.eval:len(  ) > 0 )
+	assert( opt.poolType:len(  ) > 0 )
+	assert( opt.multiScale >= 0 )
+	assert( opt.heatmaps >= 0 )
 	assert( opt.dropout <= 1 and opt.dropout >= 0 )
 	assert( opt.loss:len(  ) > 0 )
 	assert( opt.numEpoch > 0 )
@@ -307,15 +317,50 @@ function task:defineModel(  )
 	local netName = self.opt.net
 	local numClass = self.dbtr.cid2name:size( 1 )
 	local dropout = self.opt.dropout
+	local poolType = self.opt.poolType
 	local model
 	
-	if netName == 'alexNet' or netName == 'alexNetScratch' then
+	if netName == 'alexNet' then-- or netName == 'alexNetScratch' then
 		require 'loadcaffe'
 		local alexnet = loadcaffe.load(gpath.net.alex_caffe_proto, gpath.net.alex_caffe_model, 'cudnn')
-		--print(alexnet)
-		local outLayer = alexnet:get(alexnet:size())
-		alexnet:remove()
-		local hSize = alexnet:get(alexnet:size()).weight:size(2)
+		print(alexnet)
+		
+
+        for i = 16, 24 do
+            alexnet:remove()
+        end
+
+        local classifier = nn.Sequential()
+
+        classifier:add(nn.SpatialConvolution(256, 4096, 6, 6))
+        classifier:add(nn.ReLU())
+        classifier:add(nn.Dropout(0.5))
+        classifier:add(nn.SpatialConvolution(4096, 4096, 1, 1))
+        classifier:add(nn.ReLU())
+        classifier:add(nn.Dropout(0.5))
+        classifier:add(nn.SpatialConvolution(4096, numClass, 1, 1))
+        --classifier:add(nn.ReLU())
+
+        if poolType == 'max' then
+        	classifier:add(nn.Max(3,3))
+        	classifier:add(nn.Max(2,2))
+    	elseif poolType == 'average' then
+    		classifier:add(nn.Mean(3,3))
+        	classifier:add(nn.Mean(2,2))
+        end
+        model = nn.Sequential()
+
+		model:add(alexnet)
+		model:add(classifier)
+
+        --[[
+
+        local outLayer = alexnet:get(alexnet:size())
+		
+
+        alexnet:remove()
+		
+        local hSize = alexnet:get(alexnet:size()).weight:size(2)
 		--print(hSize)
 		alexnet:remove()
 		--print(alexnet)
@@ -332,19 +377,112 @@ function task:defineModel(  )
 
 		last:add(nn.ReLU())
 
-		if netName == 'alexNetScratch' then
-			for i = 1, alexnet:size() do
-				alexnet:get(i):reset()
-			end
-		end
+		--if netName == 'alexNetScratch' then
+			--for i = 1, alexnet:size() do
+				--alexnet:get(i):reset()
+			--end
+		--end
 		--print(last)
 		
 		model = nn.Sequential()
 
 		model:add(alexnet)
 		model:add(last)
+        --]]
+		
+    elseif netName == 'siamese' then
+		require 'loadcaffe'
+		local alexnet = loadcaffe.load(gpath.net.alex_caffe_proto, gpath.net.alex_caffe_model, 'cudnn')
+		print(alexnet)
 		
 
+        for i = 16, 24 do
+            alexnet:remove()
+        end
+
+        --local alexMap = nn.Sequential()
+
+        --for i = 1, 16 do
+        --	local temp = alexnet:get(i)
+        --	temp = nn.MapTable(temp)
+        --	--temp:resize(3)
+        --	alexMap:add(temp)
+        --end
+
+        local alex2 = alexnet:clone('weight','bias','gradWeight','gradBias') --'weight', 'bias')
+        local alex3 = alexnet:clone('weight','bias','gradWeight','gradBias') --'weight', 'bias')
+
+        local alexTable = nn.ParallelTable()
+
+        alexTable:add(alexnet)
+        alexTable:add(alex2)
+        alexTable:add(alex3)
+
+        local classifier = nn.Sequential()
+
+
+        local k = 4096
+        classifier:add(nn.SpatialConvolution(256, k, 6, 6))
+        classifier:add(nn.ReLU())
+        classifier:add(nn.Dropout(0.5))
+        classifier:add(nn.SpatialConvolution(k, k, 1, 1))
+        classifier:add(nn.ReLU())
+        classifier:add(nn.Dropout(0.5))
+        classifier:add(nn.SpatialConvolution(k, numClass, 1, 1))
+        --classifier:add(nn.ReLU())
+
+        if poolType == 'max' then
+        	classifier:add(nn.Max(3,3))
+        	classifier:add(nn.Max(2,2))
+    	elseif poolType == 'average' then
+    		classifier:add(nn.Mean(3,3))
+        	classifier:add(nn.Mean(2,2))
+        end
+
+        --local classMap = nn.Sequential()
+        --for i = 1, classifier:size() do
+        --	local temp = classifier:get(i)
+        --	temp = nn.MapTable(temp)
+        	--temp:resize(3)
+        --	classMap:add(temp)
+        --end
+
+        classifier:add(nn.Unsqueeze(2, 1))
+        
+        local class2 = classifier:clone('weight','bias','gradWeight','gradBias') --'weight', 'bias')
+        local class3 = classifier:clone('weight','bias','gradWeight','gradBias') --'weight', 'bias')
+        local classTable = nn.ParallelTable()
+        classTable:add(classifier)
+        classTable:add(class2)
+        classTable:add(class3)
+
+
+        --local alex = nn.Sequential()
+        local class = nn.Sequential()
+        class:add(classTable)
+        --class:add(nn.Unsqueeze(2, 2))
+        class:add(nn.JoinTable(2,2))
+        class:add(nn.Mean(2, 2))
+
+
+
+        --classMap:add(nn.CAddTable())
+        --classMap:add(nn.Mul(1/3))
+        --classMap:add(nn.JoinTable(2, 1))
+        --classMap:add(nn.Mean(2,2))
+        model = nn.Sequential()
+        model:add(alexTable)
+        model:add(class)
+
+        --model:add(alexMap)
+        --model:add(classMap)
+		--model:add(alexnet)
+		--model:add(classifier)
+
+		--model = nn.MapTable(model)
+		--model:resize(3)
+		--model:add(nn.CAddTable())
+		--model:add(nn.Mul(1/3))
 		
 
 	end
@@ -420,6 +558,7 @@ function task:getBatchTrain(  )
 	local augment = self.opt.augment
 	local numImage = self.dbtr.iid2path:size( 1 )
 	local lossName = self.opt.loss
+	local netName = self.opt.net
 	---------------------
 	-- FILL IN THE BLANK.
 	-- 1. Randomly sample batchSize training images from self.dbtr.
@@ -478,15 +617,39 @@ function task:getBatchTrain(  )
 		--end
 	end
 
+	--if netName == 'siamese' then
+	--	input = {input, input, input}
+	--end
+	local inputs
+	if netName == 'siamese' then
+		local sizes = {224, 336, 448}
+		--print(#input)
+
+		local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
+		local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
+		for i = 1, input:size(1) do
+			im2[i] = image.scale(input[i], sizes[2])
+			im3[i] = image.scale(input[i], sizes[3])
+		end
+
+		inputs = {input, im2, im3}
+	else
+		inputs = input
+	end
+	--print("Size of train batch")
+	--print(#input)
+
 	-- END BLANK.
 	-------------
-	return input, label
+	return inputs, label
 end
 function task:getBatchVal( iidStart )
 	local batchSize = self.opt.batchSize
 	local cropSize = self.opt.cropSize
 	local numImage = self.dbval.iid2path:size( 1 )
 	local lossName = self.opt.loss
+	local netName = self.opt.net
+	local multiScale = self.opt.multiScale
 	---------------------
 	-- FILL IN THE BLANK.
 	-- 1. Starting from iidStart, get consecutive batchSize validation images from self.dbval.
@@ -520,6 +683,8 @@ function task:getBatchVal( iidStart )
 		end
 	end
 
+	--print(iidStart)
+
 	--local label = torch.Tensor(batchSize, numClass)
 	-- Need to reshape for other criterion
 	--[[
@@ -535,11 +700,122 @@ function task:getBatchVal( iidStart )
 		label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize-1}}]
 	end
 	--]]
+	local inputs
+	if netName == 'siamese' then
+		if multiScale then
+			local sizes = {224, 336, 448}
+			--print(#input)
+
+			local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
+			local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
+			for i = 1, input:size(1) do
+				im2[i] = image.scale(input[i], sizes[2])
+				im3[i] = image.scale(input[i], sizes[3])
+			end
+
+			inputs = {input, im2, im3}
+		else
+			inputs = {input, input, input}
+		end
+	else
+		inputs = input
+	end
+	--print("Size of val batch")
+	--print(#input)
 
 	-- END BLANK.
 	-------------
-	return input, label
+	return inputs, label
 end
+
+function task:getBatchHeatmap(  )
+	local batchSize = self.opt.batchSize
+	local cropSize = self.opt.cropSize
+	local numImage = self.dbval.iid2path:size( 1 )
+	local lossName = self.opt.loss
+	local netName = self.opt.net
+	local multiScale = self.opt.multiScale
+	local dbDir = gpath.db.voc07
+	
+	---------------------
+	-- FILL IN THE BLANK.
+	-- 1. Starting from iidStart, get consecutive batchSize validation images from self.dbval.
+	--    You must call self:processImageVal() to load images.
+	--    You can decode a file path by ffi.string( torch.data( self.dbval.iid2path[ iid ] ) ).
+	--    The image batch must have a size of batchSize*3*cropSize*cropSize.
+	-- 2. Make a label batch.
+	--    The shape of the label batch depends on the type of loss.
+	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
+
+
+
+	--cid2name = {'aeroplane', 'bicycle', 'bird',
+	-- 	'boat', 'bottle', 'bus', 'car', 'cat', 'chair',
+	-- 	'cow', 'diningtable', 'dog', 'horse', 'motorbike',
+	-- 	'person', 'pottedplant', 'sheep', 'sofa', 'train',
+	 -- 	'tvmonitor'}
+
+
+	local batchSize = 1
+	local numClass = 20--self.dbtr.cid2name:size( 1 )
+
+	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
+	local label = torch.zeros(batchSize, numClass)
+	if lossName == 'entropy' then
+		label[{1, 1}] = 1
+		--label[{2, 2}] = 1
+		--label[{2, 15}] = 1
+	else
+		label[{1, 1}] = 1
+		--label[{2, 1}] = 2
+		--label[{2, 2}] = 15
+	end
+
+	imgs = {'000647'}--'004555.jpg', '000030.jpg'}--{'000228.jpg', '000812.jpg'}
+	local path
+	for i = 1, batchSize do
+		path = dbDir .. 'JPEGImages/' .. imgs[i] .. '.jpg'--dbDir .. 'HeatmapTest/' .. imgs[i]
+		input[i] = self:processImageVal(path)
+	end
+
+	local inputs
+	if netName == 'siamese' and multiScale then
+		local sizes = {224, 336, 448}
+		--print(#input)
+
+		local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
+		local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
+		for i = 1, input:size(1) do
+			im2[i] = image.scale(input[i], sizes[2])
+			im3[i] = image.scale(input[i], sizes[3])
+		end
+
+		inputs = {input, im2, im3}
+	elseif netName == 'siamese' then
+		local iSize = 448
+		local aux = torch.Tensor(input:size(1), input:size(2), iSize, iSize)--image.scale(input, 448)
+		--local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
+		--local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
+		for i = 1, input:size(1) do
+			aux[i] = image.scale(input[i], iSize)
+			--im3[i] = image.scale(input[i], sizes[3])
+		end
+		inputs = {aux, aux, aux}
+	else
+		local iSize = 448
+		inputs = torch.Tensor(input:size(1), input:size(2), iSize, iSize)--image.scale(input, 448)
+		for i = 1, input:size(1) do
+			inputs[i] = image.scale(input[i], iSize)
+		end
+		--inputs = image.scale(input, 448)
+	end
+
+	--print(#inputs)
+	-- END BLANK.
+	-------------
+	return inputs, label, batchSize
+end
+
 function task:evalBatch( outs, labels )
 	local batchSize = self.opt.batchSize
 	local lossName = self.opt.loss
@@ -555,22 +831,133 @@ function task:evalBatch( outs, labels )
 
 
 		local TP = torch.zeros(numClass) -- True positives
-		local P = torch.zeros(numClass) -- 	Condition Positive: True positives + False Negatives
+		--local P = torch.zeros(numClass) -- 	Condition Positive: True positives + False Negatives
+
+        local FP = torch.zeros(numClass)
+        local FN = torch.zeros(numClass)
+
+        local AP = torch.zeros(numClass)--batchSize)
+        local Rlast = torch.zeros(numClass)
+
+        --print(outs:size())
+
+        
+        if lossName == 'multiHinge' then
+            local aux = torch.zeros(batchSize, numClass)
+
+            for i = 1, batchSize do
+                for j = 1, numClass do
+                    local label = labels[i][j]
+                    if label == 0 then break end
+                    aux[i][label] = 1
+                end
+            end
+            labels = aux
+        end
+
+        local TP = torch.zeros(numClass) -- True positives
+        local FP = torch.zeros(numClass)
+        local FN = torch.zeros(numClass)
 
 		for i = 1, batchSize do
-			if lossName == 'entropy' then
+            
+
+			--if lossName == 'entropy' then
 				for j = 1, numClass do
 					if labels[i][j] == 1 then
-						P[j] = P[j] + 1
+						--P[j] = P[j] + 1
 						if outs[i][j] > 0 then
 							TP[j] = TP[j] + 1
-						--top1 = top1 + 1
-						--break
-						end
-					end
+						else
+                            FN[j] = FN[j] + 1
+                        end
+                    elseif labels[i][j] == 0 then
+                        --P[j] = P[j] + 1
+                        --if outs[i][j] > 0 then
+                        --    TP[j] = TP[j] + 1
+                        --top1 = top1 + 1
+                        --break
+                        --end
+                        if outs[i][j] > 0 then
+                            FP[j] = FP[j] + 1
+                        --else
+                        --    FN[j] = FN[j] + 1
+                        end
+                    end
 
-				end
-			else
+				--end
+			--[[else
+                for j = 1, numClass do
+                    local label = labels[i][j]
+                    --if label == 0 then break end
+                    --P[label] = P[label] + 1
+                    print(label)
+                    if label == 1 then
+                        if outs[i][label] > 0 then
+                            TP[label] = TP[label] + 1
+                        else
+                            FN[label] = FN[label] + 1
+                        end
+                    elseif outs[i][label] > 0 then
+                        FP[label] = FP[label] + 1
+                    end
+                    --if labels[i][j] == 1 then --(outLabels[i] == labels[i][j]) then
+                        --top1 = top1 + 1
+                        --break
+                        --truth[j] = truth[j] + 1
+                    --end
+                end --]]
+            end
+
+            local P = torch.cdiv(TP, TP + FP)
+            local R = torch.cdiv(TP, TP + FN)
+            --print(TP)
+            --print(FP)
+            --print(FN)
+            --print(P)
+            --print(R)
+            --print(R - Rlast)
+            --local tmp = P / batchSize
+            local nan_mask_P = P:ne(P)
+            P[nan_mask_P] = 0
+            local nan_mask_R = R:ne(R)
+            R[nan_mask_R] = 0
+
+            AP = AP + P --* (R - Rlast) / i --/ i--batchSize --P[i] = torch.mean(P) -- torch.cmul(P, R - Rlast)
+            Rlast = R
+            --local nan_mask = AP:ne(AP)
+            --AP[nan_mask] = 0
+
+        end
+
+        AP = AP / batchSize
+
+
+        --[[
+        local N = 0
+        local sum = 0
+        for i = 1, batchSize do
+            if AP[i] ~= AP[i] then 
+                AP[i] = 0
+            end
+                sum = sum + PPV[i]
+                N = N + 1
+            end
+        end
+        local mAP = sum/N
+        --]]
+
+        --local P = torch.cdiv(TP, TP + FP)
+        --local R = torch.cdiv(TP, TP + FN)
+
+        --AP[i] = torch.mean(P)
+
+        --local nan_mask = AP:ne(AP)
+        --AP[nan_mask] = 0
+        mAP = torch.mean(AP)
+        
+
+        --[[
 				for j = 1, numClass do
 					local label = labels[i][j]
 					if label == 0 then break end
@@ -587,6 +974,7 @@ function task:evalBatch( outs, labels )
 			end
 		end
 
+
 		local PPV = torch.cdiv(TP, P)
 		-- ignore NaN
 		
@@ -599,6 +987,7 @@ function task:evalBatch( outs, labels )
 			end
 		end
 		mAP = sum/N
+        --]]
 		return mAP--torch.mean(torch.cdiv(classified, truth))
 
 

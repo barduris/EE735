@@ -18,6 +18,14 @@ function val.setOption( opt, numBatchVal )
 	val.batchSize = opt.batchSize
 	val.pathValLog = opt.pathValLog
 	val.epochSize = numBatchVal
+	if opt.net == 'siamese' then
+		val.inputs = {
+			torch.CudaTensor(),
+			torch.CudaTensor(),
+			torch.CudaTensor()
+		}
+		val.dirRoot = opt.dirRoot
+	end
 end
 function val.setModel( modelSet )
 	val.model = modelSet.model
@@ -69,7 +77,18 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	-- Initialization.
 	local dataTime = val.dataTimer:time(  ).real
 	val.netTimer:reset(  )
-	val.inputs:resize( inputsCpu:size(  ) ):copy( inputsCpu )
+	--print(#inputsCpu)
+	--print(type(inputsCpu))
+	if (type(inputsCpu) == 'table') then
+		for i = 1, #inputsCpu do
+			val.inputs[i]:resize( inputsCpu[i]:size(  ) ):copy( inputsCpu[i] )
+			--train.labels[i]:resize( labelsCpu[i]:size(  ) ):copy( labelsCpu[i] )
+		end
+	else
+		val.inputs:resize( inputsCpu:size(  ) ):copy( inputsCpu )
+		--train.labels:resize( labelsCpu:size(  ) ):copy( labelsCpu )
+	end
+	--val.inputs:resize( inputsCpu:size(  ) ):copy( inputsCpu )
 	val.labels:resize( labelsCpu:size(  ) ):copy( labelsCpu )
 	cutorch.synchronize(  )
 	---------------------
@@ -82,7 +101,17 @@ function val.evaluateBatch( inputsCpu, labelsCpu )
 	
 	-- 1.
 	local output = val.model:forward(val.inputs)
-
+	--print(#val.model.modules[2])
+	--[[
+	print(#val.model.modules[2].modules[1].modules[1].modules[6].output)--.modules[1].modules[6].output)--[6])--.output)
+	print(#val.model.modules[2].modules[1].modules[2].modules[6].output)--.modules[1].modules[6].output)--[6])--.output)
+	print(#val.model.modules[2].modules[1].modules[3].modules[6].output)--.modules[1].modules[6].output)--[6])--.output)
+	print(#val.model.modules[2].modules[1].modules[3].modules[6].output[1])
+	for i = 1, 20 do
+		image.save(paths.concat( val.dirRoot, 'figures/' .. i .. '.png' ), val.model.modules[2].modules[1].modules[3].modules[6].output[{1, {i}}])
+	end
+	assert(1 == 2)
+	--]]
 	-- 2.
 	local err = val.criterion:forward(output, val.labels)
 	val.lossEpoch = val.lossEpoch + err

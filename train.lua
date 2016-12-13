@@ -22,6 +22,13 @@ function train.setOption( opt )
 	train.pathModel = opt.pathModel
 	train.pathOptim = opt.pathOptim
 	train.pathTrainLog = opt.pathTrainLog
+	if opt.net == 'siamese' then
+		train.inputs = {
+			torch.CudaTensor(),
+			torch.CudaTensor(),
+			torch.CudaTensor()
+		}
+	end
 end
 function train.setModel( modelSet )
 	assert( #modelSet.params == #modelSet.grads )
@@ -83,10 +90,21 @@ function train.train( epoch )
 	collectgarbage(  )
 end
 function train.trainBatch( inputsCpu, labelsCpu )
+	--print(#inputsCpu)
+	--print(type(inputsCpu) == 'table')
 	-- Initialization.
 	local dataTime = train.dataTimer:time(  ).real
 	train.netTimer:reset(  )
-	train.inputs:resize( inputsCpu:size(  ) ):copy( inputsCpu )
+
+	if (type(inputsCpu) == 'table') then
+		for i = 1, #inputsCpu do
+			train.inputs[i]:resize( inputsCpu[i]:size(  ) ):copy( inputsCpu[i] )
+			--train.labels[i]:resize( labelsCpu[i]:size(  ) ):copy( labelsCpu[i] )
+		end
+	else
+		train.inputs:resize( inputsCpu:size(  ) ):copy( inputsCpu )
+		--train.labels:resize( labelsCpu:size(  ) ):copy( labelsCpu )
+	end
 	train.labels:resize( labelsCpu:size(  ) ):copy( labelsCpu )
 	train.model:zeroGradParameters(  )
 	cutorch.synchronize(  )
@@ -122,7 +140,6 @@ function train.trainBatch( inputsCpu, labelsCpu )
 		local layer = train.model:get(i)
 		layerParameters[i], layerGradientParameters[i] = layer:getParameters()
 	end
-
 	for i = 1, #layerParameters do
 
 		if layerParameters[i]:nDimension() > 0 then
