@@ -65,8 +65,8 @@ for e = se, opt.numEpoch do
 end
 -- Save model.
 model.model:clearState()
-saveDataParallel( opt.pathModel:format( 0 ), model.model )
-torch.save( opt.pathOptim:format( 0 ), model.optims )
+saveDataParallel( opt.pathModel:format( opt.numEpoch ), model.model )
+torch.save( opt.pathOptim:format( opt.numEpoch ), model.optims )
 
 if opt.heatmaps then
 

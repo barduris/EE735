@@ -196,8 +196,8 @@ function task:parseOption( arg )
 	cmd:option( '-heatmaps', 1, 'Generate heatmaps.' )
 	-- Train.
 	cmd:option( '-numEpoch', 50, 'Number of total epochs to run.' )
-	cmd:option( '-epochSize', 25, 'Number of batches per epoch.' )
-	cmd:option( '-batchSize', 64, 'Mini-batch size.' )
+	cmd:option( '-epochSize', 30, 'Number of batches per epoch.' )
+	cmd:option( '-batchSize', 48, 'Mini-batch size.' )
 	cmd:option( '-learnRate', '1e-2,1e-2', 'Supports multi-lr for multi-module like lr1,lr2,lr3,...' )
 	cmd:option( '-momentum', 0.9, 'Momentum.' )
 	cmd:option( '-weightDecay', 1e-4, 'Weight decay.' )
@@ -702,7 +702,7 @@ function task:getBatchVal( iidStart )
 	--]]
 	local inputs
 	if netName == 'siamese' then
-		if multiScale then
+		if multiScale > 0 then
 			local sizes = {224, 336, 448}
 			--print(#input)
 
@@ -715,7 +715,7 @@ function task:getBatchVal( iidStart )
 
 			inputs = {input, im2, im3}
 		else
-			inputs = {input, input, input}
+			inputs = {input, input:clone(), input:clone()}
 		end
 	else
 		inputs = input

@@ -118,7 +118,8 @@ function hm.evaluate( inputsCpu, labelsCpu )
 		else
 			prfx = 'avg'
 		end
-	elseif hm.opt.multiScale then
+	elseif hm.opt.multiScale > 0 then
+		--print(hm.opt.multiScale)
 		prfx = 'multi'
 	else
 		prfx = 'single'
@@ -137,7 +138,21 @@ function hm.evaluate( inputsCpu, labelsCpu )
 		for j = 1, 20 do
 			local heatmap
 			if hm.opt.net == 'siamese' then
-				heatmap = hm.model.modules[2].modules[1].modules[3].modules[7].output[{i, {j}}]
+				-- TODO implement this shiiiite
+				if hm.opt.multiScale > 0 then
+					local tmp3 = hm.model.modules[2].modules[1].modules[3].modules[7].output[{i, {j}}]:double()
+					local sz = tmp3:size(3)
+					local tmp2 = image.scale(hm.model.modules[2].modules[1].modules[2].modules[7].output[{i, {j}}]:double(), sz)
+					local tmp1 = image.scale(hm.model.modules[2].modules[1].modules[1].modules[7].output[{i, {j}}]:double(), sz)
+					local htmp = torch.Tensor(3, sz, sz)
+					htmp[1] = tmp1
+					htmp[2] = tmp2
+					htmp[3] = tmp3
+					heatmap = torch.mean(htmp, 1)
+					--print(heatmap:size())
+				else
+					heatmap = hm.model.modules[2].modules[1].modules[3].modules[7].output[{i, {j}}]
+				end
 			else
 				heatmap = hm.model.modules[2].modules[7].output[{i, {j}}]
 			end
@@ -162,7 +177,12 @@ function hm.evaluate( inputsCpu, labelsCpu )
 			image.save(paths.concat( hm.opt.dirRoot, 'figures/' .. prfx .. '/' .. i ..',' .. j .. '.png' ), heatmap)--hm.model.modules[2].modules[1].modules[3].modules[6].output[{i, {j}}])
 			--print(heatmap:size())
 		end
-		image.save(paths.concat( hm.opt.dirRoot, 'figures/' .. prfx .. '/output' .. i .. '.png' ), hm.inputs[i])
+		if hm.opt.net == 'siamese' then
+			image.save(paths.concat( hm.opt.dirRoot, 'figures/' .. prfx .. '/output' .. i .. '.png' ), hm.inputs[3][i])
+
+		else
+			image.save(paths.concat( hm.opt.dirRoot, 'figures/' .. prfx .. '/output' .. i .. '.png' ), hm.inputs[i])
+		end
 	end
 	--assert(1 == 2)
 
