@@ -3,6 +3,7 @@
 data/cache
 data/db/CIFAR10/
 data/db/VOC07/
+data/db/*
 data/net/
 cutorch.lua
 cunn.lua
