@@ -123,7 +123,7 @@ function train.trainBatch( inputsCpu, labelsCpu )
 
 	-- 1. Feed-forward
     local output = train.model:forward(train.inputs)
-
+    
     -- 2. Estimate loss
 	local err = train.criterion:forward(output, train.labels)
 	train.lossEpoch = train.lossEpoch + err

@@ -181,7 +181,7 @@ function task:parseOption( arg )
 	-- Data.
 	cmd:option( '-data', 'AFW', 'Name of dataset defined in "./db/"' )
 	cmd:option( '-imageSize', 256, 'Short side of initial resize.' )
-	cmd:option( '-cropSize', 224, 'Size of random square crop.' )
+	cmd:option( '-cropSize', 227, 'Size of random square crop.' )
 	cmd:option( '-keepAspect', 1, '1 for keep, 0 for no.' )
 	cmd:option( '-normalizeStd', 0, '1 for normalize piexel std to 1, 0 for no.' )
 	cmd:option( '-augment', 1, '1 for data augmentation, 0 for no.' )
@@ -190,7 +190,7 @@ function task:parseOption( arg )
 	cmd:option( '-net', 'hyperface', 'Network like cifarNet, cifarNetLarge, cifarNetBatchNorm.' ) --------------------------------------------
 	cmd:option( '-dropout', 0.5, 'Dropout ratio.' )
 	cmd:option( '-loss', 'L2', 'Loss like logSoftMax, hinge, L2.' )
-	cmd:option( '-eval', 'map', 'Evaluation metric.' )
+	cmd:option( '-eval', 'acc', 'Evaluation metric.' )
 	cmd:option( '-poolType', 'max', 'Type of global pooling layers.' )
 	cmd:option( '-multiScale', 0, 'Test type.' )
 	cmd:option( '-heatmaps', 1, 'Generate heatmaps.' )
@@ -255,27 +255,31 @@ function task:parseOption( arg )
 end
 function task:createDbTrain(  )
 	local dbtr = {  }
-	dbtr.iid2path,	dbtr.iid2cid, dbtr.cid2name = createDb( 'train' )
+	--dbtr.iid2path,	dbtr.iid2cid, dbtr.cid2name = createDb( 'train' )
+    dbtr.iid2path,  dbtr.iid2bbox, dbtr.bbox2name = createDb( 'train' )
 	local numImage = dbtr.iid2path:size( 1 )
-	local numClass = dbtr.cid2name:size( 1 )
+	local numClass = dbtr.bbox2name:size( 1 )--cid2name:size( 1 )
 	self:print( string.format( 'Train: %d images, %d classes.', numImage, numClass ) )
 	-- Verification.
 	--print(dbtr.iid2path:size())
 	--print(dbtr.iid2cid:size())
 	--print(dbtr.cid2name:size())
 	--print(dbtr.iid2cid:max())
-	assert( dbtr.iid2path:size( 1 ) == dbtr.iid2cid:size( 1 ) )
+	assert( dbtr.iid2path:size( 1 ) == #dbtr.iid2bbox ) --iid2cid:size( 1 ) )
 	--assert( dbtr.cid2name:size( 1 ) == dbtr.iid2cid:max(  ) )
 	return dbtr
 end
 function task:createDbVal(  )
 	local dbval = {  }
-	dbval.iid2path, dbval.iid2cid, dbval.cid2name = createDb( 'val' )
-	local numImage = dbval.iid2path:size( 1 )
-	local numClass = dbval.cid2name:size( 1 )
+	--dbval.iid2path, dbval.iid2cid, dbval.cid2name = createDb( 'val' )
+	
+    dbval.iid2path, dbval.iid2bbox, dbval.bbox2name = createDb( 'val' )
+
+    local numImage = dbval.iid2path:size( 1 )
+	local numClass = dbval.bbox2name:size( 1 ) --cid2name:size( 1 )
 	self:print( string.format( 'Val: %d images, %d classes.', numImage, numClass ) )
 	-- Verification.
-	assert( dbval.iid2path:size( 1 ) == dbval.iid2cid:size( 1 ) )
+	assert( dbval.iid2path:size( 1 ) == #dbval.iid2bbox )--cid:size( 1 ) )
 	-- assert( dbval.cid2name:size( 1 ) == dbval.iid2cid:max(  ) )
 	return dbval
 end
@@ -286,7 +290,7 @@ function task:setNumBatch(  )
 	-- Determine number of train/val batches per epoch.
 
 	local numBatchTrain = self.opt.epochSize
-	local numBatchVal = math.floor( self.dbval.iid2cid:size( 1 ) / batchSize )
+	local numBatchVal = math.floor( #self.dbval.iid2bbox / batchSize )--iid2cid:size( 1 ) / batchSize )
 
 	-- END BLANK.
 	-------------
@@ -315,9 +319,9 @@ end
 function task:defineModel(  )
 	-- Set params.
 	local netName = self.opt.net
-	local numClass = self.dbtr.cid2name:size( 1 )
+	--local numClass = self.dbtr.cid2name:size( 1 )
 	local dropout = self.opt.dropout
-	local poolType = self.opt.poolType
+	--local poolType = self.opt.poolType
 	local model
 	
 	if netName == 'hyperface' then-- or netName == 'alexNetScratch' then
@@ -368,13 +372,33 @@ function task:defineModel(  )
         feature:add(subnet)
         feature:add(nn.JoinTable(1, 3))
         feature:add(nn.SpatialConvolution(768, 192, 1, 1))
-        feature:cuda()
+        --feature:cuda()
 
 
 
         local classifier = nn.Sequential()
-        classifier:add(nn.View(-1))
+        classifier:add(nn.View(-1):setNumInputDims(3))
+        classifier:add(nn.Linear(6912, 3072))
+        classifier:add(nn.ReLU())
+        --classifier:add(nn.View(-1, 512)) --Reshape(5, 512, true))
 
+        local split = nn.ConcatTable()
+        --local detection = nn.Sequential()
+        --local landmarks = nn.Sequential()
+        --local visibility = nn.Sequential()
+        --local pose = nn.Sequential()
+        --local gender = nn.Sequential()
+
+        local nout = {1}--2, 42, 21, 3, 2}
+        for i = 1, 1 do
+            local fc = nn.Sequential()
+            fc:add(nn.Linear(3072, 512))
+            fc:add(nn.ReLU())
+            fc:add(nn.Linear(512, nout[i]))
+            fc:add(nn.Sigmoid()) -- only for face / not face
+            --split:add(fc)
+            classifier:add(fc)
+        end
 
         --[[
         classifier:add(nn.SpatialConvolution(256, 4096, 6, 6))
@@ -400,11 +424,59 @@ function task:defineModel(  )
 		--model:add(alexnet)
         model:add(feature)
 		model:add(classifier)
-        print(model)
-        local inp = torch.Tensor(1, 3, 227, 227):cuda()
-        local outp = model:forward(inp)
-        print(outp:size())
+        --model:cuda()
+        --print(model)
+        --local inp = torch.Tensor(2, 3, 227, 227):cuda()
+        --local outp = model:forward(inp)
+        --print(outp:size())
+        --assert(false)
+
+    elseif netName == 'lnet' then
+        require 'loadcaffe'
+        local alexnet = loadcaffe.load(gpath.net.alex_caffe_proto, gpath.net.alex_caffe_model, 'cudnn')
+        print(alexnet)
+        
+
+        for i = 16, 24 do
+            alexnet:remove()
+        end
+
+
+        local img = image.load( 'testimg.jpg', 3, 'float' )
+        img = self:normalizeImage(img)
+
+        local output = alexnet:forward(img:cuda())
+        --print(output:size())
+        local temp = output:mean(1)
+        --print(temp:max())
+        --print(type(temp))
+        --print(temp:size())
+        --print(output[1]:size())
+        --local heatmap = image.y2jet(temp:double())
+        --print(heatmap:size())
+        --print(output[{{1}}]:size())
+        --output = output:double()
+        --print(output:size())
+        for i = 1, output:size(1) do
+            --print(output[{{i}}]:size())
+            local temp2 = output[{{i}}]:clone()
+            temp2 = temp2:div(temp:max())
+            local temp2 = temp:mean(1)
+            print(i)--temp2:size())
+            --print(temp:size())
+            --print(temp:size())
+            --temp:unSqueeze(1)
+            --print(temp:size())
+            --print(temp:size())
+            --print(temp:size())
+            --print(temp:max())
+            local heatmap = image.y2jet(temp2:double())
+            --print(heatmap:size())
+            image.save('heatmaps/heatmap' .. i .. '.png', heatmap)
+        end
+
         assert(false)
+
 
 	end
 	model:cuda(  )
@@ -417,7 +489,13 @@ end
 function task:defineCriterion(  )
 	local lossName = self.opt.loss
 	local loss
-	if lossName == 'multiHinge' then
+
+    if 1 == 1 then
+
+        loss = nn.BCECriterion()
+
+
+	elseif lossName == 'multiHinge' then
 		---------------------
 		-- FILL IN THE BLANK.
 		-- Choose a built-in hinge loss function in torch.
@@ -490,7 +568,7 @@ function task:getBatchTrain(  )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 	
-	local numClass = self.dbtr.cid2name:size( 1 )
+	local numClass = #self.dbtr.bbox2name--cid2name:size( 1 )
 
 	local indeces = torch.randperm(numImage)
 	indeces = indeces[{{1, batchSize}}]
@@ -502,16 +580,16 @@ function task:getBatchTrain(  )
 	local rh = 0.5
 	local rf = 0
 
-	local label = torch.Tensor(batchSize, numClass)
-	if lossName == 'entropy' then
-		label:fill(0)
-	end
-	--print(numClass)
-	--if lossName == 'l2' then
-	--	label = torch.Tensor(batchSize, numClass):fill(-1)
-	--else
-	--	label = torch.Tensor(batchSize)
-	--end
+
+
+	local label = torch.Tensor(batchSize, 1) --, numClass)
+
+
+    local percentile = 0.5
+    local face = 1
+    local notFace = 0
+    label:fill(notFace)
+
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbtr.iid2path[ indeces[i] ] ) )
 		if augment then
@@ -519,50 +597,44 @@ function task:getBatchTrain(  )
 			rh = torch.uniform()
 			rf = torch.uniform()
 		end
-		input[i] = self:processImageTrain(path, rw, rh, rf)
-		local cid = self.dbtr.iid2cid[ indeces[i] ]
-		if lossName == 'entropy' then
-			for icid = 1,cid:size(1) do
-				if cid[icid] == 0 then break end
-				label[i][cid[icid]] = 1
-			end
-		else
-			label[i] = cid
-		end
-		--local cid = self.dbtr.iid2cid[ indeces[i] ]
-		--if lossName == 'l2' then
-
-		--	label[i][cid] = 1
-		--else
-		--	label[i] = cid
-		--end
+        local box
+        local bbox = self.dbtr.iid2bbox[ indeces[i] ]
+		input[i], box = self:processImageTrain(path, rw, rh, rf)--, bbox)
+        local x1, y1, x2, y2 = box[1], box[2], box[3], box[4]
+        --local Area = (x2 - x1) * (y2 - y1)
+        --print('Area: ' .. Area)
+        for ib = 1, #bbox do
+            local xh1, yh1, xh2, yh2 = bbox[ib][1], bbox[ib][2], bbox[ib][3], bbox[ib][4]
+            local Area = (xh2 - xh1) * (yh2 - yh1)
+            local SI = math.max(0, math.min(x2, xh2) - math.max(x1, xh1)) * math.max(0, math.min(y2, yh2) - math.max(y1, yh1))
+            --print('Area: ' .. Area)
+            --print('SI: ' .. SI)
+            local p = SI / Area
+            --print(p)
+            if p > percentile then
+                label[i] = face
+            end
+        end
 	end
 
-	--if netName == 'siamese' then
-	--	input = {input, input, input}
-	--end
-	local inputs
-	if netName == 'siamese' then
-		local sizes = {224, 336, 448}
-		--print(#input)
+    --print("Number of faces " .. label:sum())
+    --print("Number of elems " .. label:numel())
+    --[[
+    for i = 1, batchSize do
+        print( label[i][1] .. '/' .. i .. '.png')
+        local img = input[i]:clone()
+        for j = 1, 3 do
+            img[j]:add(self.inputStat.mean[j])
+        end
+        image.save( label[i][1] .. '/' .. i .. '.png', img) 
+    end
 
-		local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
-		local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
-		for i = 1, input:size(1) do
-			im2[i] = image.scale(input[i], sizes[2])
-			im3[i] = image.scale(input[i], sizes[3])
-		end
-
-		inputs = {input, im2, im3}
-	else
-		inputs = input
-	end
-	--print("Size of train batch")
-	--print(#input)
+    assert(false)
+    --]]
 
 	-- END BLANK.
 	-------------
-	return inputs, label
+	return input, label
 end
 function task:getBatchVal( iidStart )
 	local batchSize = self.opt.batchSize
@@ -581,72 +653,39 @@ function task:getBatchVal( iidStart )
 	--    The shape of the label batch depends on the type of loss.
 	--    See https://github.com/torch/nn/blob/master/doc/criterion.md
 
-	local numClass = self.dbval.cid2name:size( 1 )
+	local numClass = #self.dbval.bbox2name --self.dbval.cid2name:size( 1 )
 
 	local input = torch.Tensor(batchSize, 3, cropSize, cropSize)
-	local label = torch.Tensor(batchSize, numClass)
-	if lossName == 'entropy' then
-		label:fill(0)
-	end
+	local label = torch.Tensor(batchSize, 1) --numClass)
+
+    local percentile = 0.5
+    local face = 1
+    local notFace = 0
+    label:fill(notFace)
+
 	local path
 	for i = 1, batchSize do
 		path = ffi.string( torch.data( self.dbval.iid2path[iidStart + i - 1] ))
-		input[i] = self:processImageVal(path)
+        local box
+        local bbox = self.dbval.iid2bbox[ iidStart + i - 1 ]
+		input[i], box = self:processImageVal(path)
 		--label[i] = self.dbval.iid2cid[iidStart + i - 1]
-		local cid = self.dbval.iid2cid[ iidStart + i - 1 ]
-		if lossName == 'entropy' then
-			for icid = 1,cid:size(1) do
-				if cid[icid] == 0 then break end
-				label[i][cid[icid]] = 1
-			end
-		else
-			label[i] = cid
-		end
+
+        local x1, y1, x2, y2 = box[1], box[2], box[3], box[4]
+        local Area = (x2 - x1) * (y2 - y1)
+        for ib = 1, #bbox do
+            local xh1, yh1, xh2, yh2 = bbox[ib][1], bbox[ib][2], bbox[ib][3], bbox[ib][4]
+            local SI = math.max(0, math.min(x2, xh2) - math.max(x1, xh1)) * math.max(0, math.min(y2, yh2) - math.max(y1, yh1))
+            local p = SI / Area
+            if p > percentile then
+                label[i] = face
+            end
+        end
 	end
-
-	--print(iidStart)
-
-	--local label = torch.Tensor(batchSize, numClass)
-	-- Need to reshape for other criterion
-	--[[
-	if lossName == 'l2' then
-		label = torch.Tensor(batchSize, numClass):fill(-1)
-		label[i] = self.dbtr.iid2cid[ indeces[i] ]
-		local cid
-		for i = 1, batchSize do
-			cid = self.dbval.iid2cid[iidStart + i - 1]
-			label[i][cid] = 1
-		end
-	else
-		label = self.dbval.iid2cid[{{iidStart, iidStart+batchSize-1}}]
-	end
-	--]]
-	local inputs
-	if netName == 'siamese' then
-		if multiScale > 0 then
-			local sizes = {224, 336, 448}
-			--print(#input)
-
-			local im2 = torch.Tensor(input:size(1), input:size(2), sizes[2], sizes[2])
-			local im3 = torch.Tensor(input:size(1), input:size(2), sizes[3], sizes[3])
-			for i = 1, input:size(1) do
-				im2[i] = image.scale(input[i], sizes[2])
-				im3[i] = image.scale(input[i], sizes[3])
-			end
-
-			inputs = {input, im2, im3}
-		else
-			inputs = {input, input:clone(), input:clone()}
-		end
-	else
-		inputs = input
-	end
-	--print("Size of val batch")
-	--print(#input)
 
 	-- END BLANK.
 	-------------
-	return inputs, label
+	return input, label
 end
 
 function task:getBatchHeatmap(  )
@@ -746,9 +785,19 @@ function task:evalBatch( outs, labels )
 	-- FILL IN THE BLANK.
 	-- Compare the network output and label to find top-1 accuracy.
 	-- This also depends on the type of loss.
-	
-	local numClass = self.dbtr.cid2name:size( 1 )
-	if eval == 'map' then
+	local numClass = labels:size(2) --self.dbtr.cid2name:size( 1 )
+    if eval == 'acc' then
+        --print(outs)
+        --print(labels)
+        local outlabs = outs:gt(0.5):cuda()
+        local T = outlabs:eq(labels)
+        --print(T)
+        local N = outs:size(1)
+        local acc = T:div(N)
+        local macc = acc:mean()
+        return macc
+
+	elseif eval == 'map' then
 
 
 		local TP = torch.zeros(numClass) -- True positives
@@ -867,11 +916,10 @@ function task:evalBatch( outs, labels )
             local R = RR[{{}, iC}]
 
             local r, idx = torch.sort(R)
-            local p = PP[{{i}}]
+            local p = P[{{idx}}]
             local r_last = 0
-
-            for i = 1, #r do
-                AP[idx[i]] = AP[idx[i]] + p[i] * (r[i] - r_last)
+            for i = 1, r:size(1) do
+                AP[iC] = AP[iC] + p[i] * (r[i] - r_last)
                 r_last = r[i]
             end
         end
@@ -978,7 +1026,7 @@ function task:evalBatch( outs, labels )
 	end
 end
 require 'image'
-function task:processImageTrain( path, rw, rh, rf )
+function task:processImageTrain( path, rw, rh, rf, bbox )
 	collectgarbage(  )
 	local cropSize = self.opt.cropSize
 	---------------------
@@ -992,6 +1040,15 @@ function task:processImageTrain( path, rw, rh, rf )
 	--    You must call self:normalizeImage()
 
 	local im = self:loadImage( path )
+    --print(im:size())
+    if bbox then
+        for ib = 1, #bbox do
+            local x1, y1, x2, y2 = bbox[ib][1], bbox[ib][2], bbox[ib][3], bbox[ib][4]
+            --print(bbox[ib])
+            image.drawRect(im, x1, y1, x2, y2, {inplace = true})
+        end
+    end
+
 	--notdone()
 	local x = math.floor(rw * ( im:size(3) - cropSize )) + 1
 	local y = math.floor(rh * ( im:size(2) - cropSize )) + 1
@@ -1000,9 +1057,11 @@ function task:processImageTrain( path, rw, rh, rf )
 		im = image.hflip(im)
 	end
 	out = self:normalizeImage(im)
+
+
 	-- END BLANK.
 	-------------
-	return out
+	return out, torch.Tensor({x, y, x + cropSize, y + cropSize})
 end
 function task:processImageVal( path )
 	collectgarbage(  )
@@ -1021,11 +1080,11 @@ function task:processImageVal( path )
 	local out = self:normalizeImage(im)
 	-- END BLANK.
 	-------------
-	return out
+	return out, torch.Tensor({x, y, x + cropSize, y + cropSize})
 end
 function task:loadImage( path )
 	local im = image.load( path, 3, 'float' )
-	im = self:resizeImage( im )
+	--im = self:resizeImage( im )
 	if self.opt.caffeInput then
 		im = im * 255
 		im = im:index( 1, torch.LongTensor{ 3, 2, 1 } )

@@ -49,6 +49,8 @@ function createDb( setName )
 	local cid2name = {}
 	local iid2path = {}
 	local iid2cid = {}
+	local iid2bbox = {}
+	local bbox2name = {}
 
 	matio.use_lua_strings = true
 	local anno = matio.load(dbDir .. 'anno_fixed.mat')
@@ -59,6 +61,7 @@ function createDb( setName )
 	--iid2cid = anno['bbox']
 	
 	cid2name = {'x1', 'y1', 'x2', 'y2'}
+	bbox2name = {'x1', 'y1', 'x2', 'y2'}
 
 	local split = math.floor(percentile * #anno['names'])
 	--local shift = 0
@@ -67,32 +70,42 @@ function createDb( setName )
 		for i = 1, split do
 			iid2path[i] = dbDir .. anno['names'][i]
 			--iid2cid[i] = anno['bbox'][i][1]
-			local bbox = anno['bbox'][i][1]
-			iid2cid[i] = { bbox[1][1], bbox[1][2], bbox[2][1], bbox[2][2] }
+			local bbox = anno['bbox'][i]--[1]
+			iid2bbox[i] = {}
+			for ib = 1, #bbox do
+				iid2bbox[i][ib] = torch.LongTensor({ bbox[ib][1][1], bbox[ib][1][2], bbox[ib][2][1], bbox[ib][2][2] })
+			end
+			--iid2cid[i] = { bbox[1][1], bbox[1][2], bbox[2][1], bbox[2][2] }
 		end
 	else
 		for i = split+1, #anno['names'] do
 			iid2path[i - split] = dbDir .. anno['names'][i]
-			local bbox = anno['bbox'][i][1]
-			iid2cid[i - split] = { bbox[1][1], bbox[1][2], bbox[2][1], bbox[2][2] }
+			local bbox = anno['bbox'][i]--[1]
+			--iid2cid[i - split] = { bbox[1][1], bbox[1][2], bbox[2][1], bbox[2][2] }
+			iid2bbox[i - split] = {}
+			for ib = 1, #bbox do
+				iid2bbox[i - split][ib] = torch.LongTensor({ bbox[ib][1][1], bbox[ib][1][2], bbox[ib][2][1], bbox[ib][2][2] })
+			end
 		end
 	end
-	print("Only taking first face")
-	--print('Size of ' .. setName .. ' dataset')
+	--print("Only taking first face")
+	print('Size of ' .. setName .. ' dataset')
 	--print(#iid2cid)
-	--print(#iid2path)
+	print(#iid2path)
 
 
 	-- END BLANK.
 	-------------
-	assert( #iid2path == #iid2cid )
+	--assert( #iid2path == #iid2cid )
+	assert( #iid2path == #iid2bbox )
 	-- Convert tables to tensors.
 	-- Lua has a fatal drawback that the garbage collection 
 	-- is getting very slow when it holds large tables. Therefore, 
 	-- this process is quite important when the size of the table grows.
-	iid2cid = torch.LongTensor( iid2cid )
+	--iid2cid = torch.LongTensor( iid2cid )
 	iid2path = strTableToTensor( iid2path )
-	cid2name = strTableToTensor( cid2name )
+	--cid2name = strTableToTensor( cid2name )
+	bbox2name = strTableToTensor( bbox2name )
 	collectgarbage(  )
-	return iid2path, iid2cid, cid2name
+	return iid2path, iid2bbox, bbox2name--iid2cid, cid2name
 end
